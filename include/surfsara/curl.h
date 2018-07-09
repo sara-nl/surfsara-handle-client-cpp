@@ -43,7 +43,9 @@ namespace surfsara
     class Curl
     {
     public:
-      Curl(std::initializer_list<std::shared_ptr<details::BasicCurlOpt>> options);
+      using InitializerList = std::initializer_list<std::shared_ptr<details::BasicCurlOpt>>;
+      Curl(const InitializerList & options);
+      Curl(const std::vector<std::shared_ptr<details::BasicCurlOpt>> & options);
       ~Curl();
       inline Result request();
     private:
@@ -60,8 +62,17 @@ namespace surfsara
 {
   namespace curl
   {
-    inline Curl::Curl(std::initializer_list<std::shared_ptr<details::BasicCurlOpt>> options) :
+    inline Curl::Curl(const InitializerList & options) :
       optSetter(options.begin(), options.end())
+    {
+      curl = curl_easy_init();
+      for(auto setter : optSetter) {
+        setter->set(curl);
+      }
+    }
+
+    inline Curl::Curl(const std::vector<std::shared_ptr<details::BasicCurlOpt>> & options) :
+      optSetter(options)
     {
       curl = curl_easy_init();
       for(auto setter : optSetter) {
