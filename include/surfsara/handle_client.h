@@ -2,6 +2,7 @@
 #include <surfsara/handle_operation.h>
 #include <surfsara/curl.h>
 #include <surfsara/json_format.h>
+#include <surfsara/json_parser.h>
 
 namespace surfsara
 {
@@ -13,12 +14,14 @@ namespace surfsara
     {
     public:
       HandleClient(const std::string & url,
-                   std::initializer_list<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> options);
-      Node create(const Node & node, const std::string & uuid = "");
-      Node update(const std::string & uuid, const std::vector<Operation> & operations);
-      Node remove(const std::string & uuid);
+                   const std::string & uuid,
+                   std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> options);
+      Node create(const std::vector<Operation> & operations);
+      Node update(const std::vector<Operation> & operations);
+      Node remove();
     private:
       std::string url;
+      std::string uuid;
       std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> options;
     };
   }
@@ -34,21 +37,21 @@ namespace surfsara
 #include <boost/uuid/uuid_io.hpp>
 #include <sstream>
 
-inline
-surfsara::handle::HandleClient::HandleClient(const std::string & _url,
-                                             std::initializer_list<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> _options)
-  : url(_url), options(_options)
+inline surfsara::handle::HandleClient::HandleClient(const std::string & _url,
+                                                    const std::string & _uuid,
+                                                    std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> _options)
+  : url(_url), uuid(_uuid), options(_options)
 {
 }
 
-surfsara::ast::Node surfsara::handle::HandleClient::create(const Node & node,
-                                                           const std::string & uuid)
+surfsara::ast::Node surfsara::handle::HandleClient::create(const std::vector<Operation> & operations)
 {
+  using namespace surfsara::ast;
   std::stringstream surl;
   surl << url;
   if(url.back() != '/')
   {
-    surl << url << "/";
+    surl << "/";
   }
   if(uuid.empty())
   {
@@ -59,21 +62,30 @@ surfsara::ast::Node surfsara::handle::HandleClient::create(const Node & node,
   {
     surl << uuid;
   }
-  //std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> optCopy(options);
-  //optCopy.push_back(surfsara::curl::Url(surl.str()));
-  //optCopy.push_back(surfsara::curl::Data(surfsara::ast::formatJson(node)));
-  //surfsara::curl::Curl curl(optCopy);
-  //auto res = curl.request();
-  return node;
+  std::cout << surl.str() << std::endl;
+
+  std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> optionsCopy(options);
+  optionsCopy.push_back(surfsara::curl::Url(surl.str()));
+  Node valueList(Object({{String("values"),
+                          Operation::operations2list(operations)}}));
+  std::string body = surfsara::ast::formatJson(valueList);
+  std::cout << body << std::endl;
+  optionsCopy.push_back(surfsara::curl::Data(body));
+  surfsara::curl::Curl curl(optionsCopy);
+  surfsara::curl::Result res = curl.request();
+  if(!res.success)
+  {
+    throw surfsara::curl::Error(res);
+  }
+  return surfsara::ast::parseJson(res.body);
 }
 
-surfsara::ast::Node surfsara::handle::HandleClient::update(const std::string & uuid,
-                                                           const std::vector<Operation> & operations)
+surfsara::ast::Node surfsara::handle::HandleClient::update(const std::vector<Operation> & operations)
 {
   return surfsara::ast::Node();
 }
 
-surfsara::ast::Node surfsara::handle::HandleClient::remove(const std::string & uuid)
+surfsara::ast::Node surfsara::handle::HandleClient::remove()
 {
   return surfsara::ast::Node();
 }

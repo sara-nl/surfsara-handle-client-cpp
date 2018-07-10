@@ -11,27 +11,47 @@ using HandleClient = surfsara::handle::HandleClient;
 using ValidationError = surfsara::handle::ValidationError;
 using Node = surfsara::ast::Node;
 
-struct HandleProgramArgs
+class HandleProgramArgs
 {
-  std::string operation;
-  std::string url;
-  std::string uuid;
-  std::vector<std::string> json;
-  bool verbose;
-  inline HandleProgramArgs();
+public:
+  HandleProgramArgs();
   inline int parse(int argc, const char ** argv);
   inline std::vector<surfsara::handle::Operation> createUpdateOperations();
+
+  Cli::Parser parser;
+  std::shared_ptr<Cli::PositionalValue<std::string>> operation;
+  std::shared_ptr<Cli::PositionalValue<std::string>> url;
+  std::shared_ptr<Cli::PositionalValue<std::string>> uuid;
+  std::shared_ptr<Cli::PositionalMultipleValue<std::string>> json;
+  std::shared_ptr<Cli::Flag> verbose;
+  std::shared_ptr<Cli::Flag> help;
+  std::shared_ptr<Cli::Value<long>> port;
 };
 
 inline HandleProgramArgs::HandleProgramArgs()
-  : verbose(false)
+  : parser("CLI tool to perform PID operations")
 {
+  operation = parser.addPositionalValue<std::string>("OPERATION",
+                                                     Cli::Doc("Operation: "
+                                                              "create / update / get / delete"));
+  url = parser.addPositionalValue<std::string>("URL",
+                                               Cli::Doc("Url (url/prefix/suffix) "
+                                                        "suffix not required for create operation"));
+  
+  uuid = parser.addPositionalValue<std::string>("UUID",
+                                                Cli::Doc("uuid"));
+  
+  json = parser.addPositionalMultipleValue<std::string>("JSON", Cli::Doc("json data"));
+  help = parser.addFlag('h', "help", Cli::Doc("show help"));
+  verbose = parser.addFlag('v', "verbose", Cli::Doc("verbose output"));
+  port = parser.addValue<long>('p', "port", Cli::Doc("port"));
 }
+
 
 inline std::vector<surfsara::handle::Operation> HandleProgramArgs::createUpdateOperations()
 {
   std::vector<surfsara::handle::Operation> ret;
-  for(auto keyValuePair : json)
+  for(auto keyValuePair : json->getValue())
   {
     std::size_t p = keyValuePair.find('=');
     if(p == std::string::npos)
@@ -60,22 +80,6 @@ inline std::vector<surfsara::handle::Operation> HandleProgramArgs::createUpdateO
 
 inline int HandleProgramArgs::parse(int argc, const char ** argv)
 {
-  Cli::Parser parser("CLI tool to perform PID operations");
-  auto argOp = parser.add(Cli::Value<std::string>::make(operation,
-                                                        Cli::Doc("Operation: "
-                                                                 "create / update / get / delate")));
-  auto argUrl = parser.add(Cli::Value<std::string>::make(url,
-                                                         Cli::Doc("Url (url/prefix/suffix) "
-                                                                  "suffix not required for create operation")));
-  auto argUuid = parser.add(Cli::Value<std::string>::make(uuid,
-                                                          Cli::Doc("uuid")));
-
-
-  auto argJson = parser.add(Cli::MultipleValue<std::string>::make(json,
-                                                                  Cli::Doc("json data")));
-  parser.add(Cli::Flag::make('h', "help", Cli::Doc("show help")));
-  parser.add(Cli::Flag::make('v', "verbose", Cli::Doc("verbose output")));
-  verbose = parser.isSet("verbose");
   std::vector<std::string> err;
   if(!parser.parse(argc, argv, err))
   {
@@ -86,55 +90,42 @@ inline int HandleProgramArgs::parse(int argc, const char ** argv)
     parser.printHelp(std::cerr);
     return 8;
   }
-  if(parser.isSet("help"))
+  if(help->isSet())
   {
     parser.printHelp(std::cout);
     return 0;
   }
-  if(!argOp->isSet())
+  if(!operation->isSet())
   {
     std::cerr << "operation is required" << std::endl;
     parser.printHelp(std::cerr);
     return 8;
   }
-  if(!argUrl->isSet())
+  if(!url->isSet())
   {
     std::cerr << "url is required" << std::endl;
     parser.printHelp(std::cerr);
     return 8;
   }
-  if(!argUuid->isSet())
+  if(!uuid->isSet())
   {
     std::cerr << "UUID is required" << std::endl;
     parser.printHelp(std::cerr);
     return 8;
   }
   
-  if(operation == "create")
+  if((operation->getValue() == "create") || (operation->getValue() == "update"))
   {
-    if(uuid == "auto")
+    if(json->getValue().size() != 1)
     {
-      uuid = "";
-    }
-    if(json.size() != 1)
-    {
-      std::cerr << "exactly on JSON object is required" << std::endl;
+      std::cerr << "exactly one JSON object is required" << std::endl;
       parser.printHelp(std::cerr);
       return 8;
     }
   }
-  else if(operation == "update")
+  if(operation->getValue() == "delete")
   {
-    if(json.size() < 1)
-    {
-      std::cerr << "at least one object required" << std::endl;
-      parser.printHelp(std::cerr);
-      return 8;
-    }
-  }
-  if(operation == "delete")
-  {
-    if(json.size() > 0)
+    if(json->getValue().size() > 0)
     {
       std::cerr << "no JSON argument allowed for delete operation" << std::endl;
       parser.printHelp(std::cerr);
@@ -152,29 +143,30 @@ int main(int argc, const char ** argv)
   {
     return ret;
   }
-  HandleClient client(args.url,
+  std::string uuid = args.uuid->getValue() == "auto" ? std::string("") : args.uuid->getValue();
+  HandleClient client(args.url->getValue(), uuid,
                       {
-                        surfsara::curl::Verbose(args.verbose),
+                        surfsara::curl::Verbose(args.verbose->isSet()),
+                        surfsara::curl::Port(args.port->getValue()),
                         surfsara::curl::Header({
                             "Content-Type:application/json",
                             "Authorization: Handle clientCert=\"true\""
                               })
                       });
 
-  if(args.operation == "create")
+  if(args.operation->getValue() == "create")
   {
-    Node node = surfsara::ast::parseJson(args.json[0]);
-    Node res = client.create(node, args.uuid);
-
-  }
-  else if(args.operation == "update")
-  {
-    Node res = client.update(args.uuid, args.createUpdateOperations());
+    Node res = client.create(args.createUpdateOperations());
     std::cout << surfsara::ast::formatJson(res, true) << std::endl;
   }
-  else if(args.operation == "delete")
+  else if(args.operation->getValue() == "update")
   {
-    Node res = client.remove(args.uuid);
+    Node res = client.update(args.createUpdateOperations());
+    std::cout << surfsara::ast::formatJson(res, true) << std::endl;
+  }
+  else if(args.operation->getValue() == "delete")
+  {
+    Node res = client.remove();
     std::cout << surfsara::ast::formatJson(res, true) << std::endl;
   }
   return 0;

@@ -33,12 +33,17 @@ namespace surfsara
     class Operation
     {
     public:
+      inline bool isUpdate() const;
+      inline bool isDelete() const;
+      inline std::string getPath() const;
+      inline Node getNode() const;
+      static Node operations2list(const std::vector<Operation> & operations);
     private:
       friend Operation Update(const std::string & path, const Node & node);
       friend Operation Delete(const std::string & path);
       Operation(const std::string & path);
       Operation(const std::string & path, const Node & node);
-      bool isDelete;
+      bool _isDelete;
       std::string url;
       Node node;
     };
@@ -55,15 +60,56 @@ namespace surfsara
 //
 ////////////////////////////////////////////////////////////////////////////////
 inline surfsara::handle::Operation::Operation(const std::string & _url)
-  : isDelete(true), url(_url)
+  : _isDelete(true), url(_url)
 {
 }
 
 
 inline surfsara::handle::Operation::Operation(const std::string & _url,
                                               const Node & _node)
-  : isDelete(false), url(_url), node(_node)
+  : _isDelete(false), url(_url), node(_node)
 {
+}
+
+inline surfsara::ast::Node surfsara::handle::Operation::getNode() const
+{
+  return node;
+}
+
+inline bool surfsara::handle::Operation::isUpdate() const
+{
+  return !_isDelete;
+}
+
+inline bool surfsara::handle::Operation::isDelete() const
+{
+  return _isDelete;
+}
+
+#include <iostream>
+#include <surfsara/json_format.h>
+surfsara::ast::Node
+surfsara::handle::Operation::operations2list(const std::vector<Operation> & operations)
+{
+  using namespace ::surfsara::ast;
+  Node ret(Array({}));
+  for(auto op : operations)
+  {
+    if(op.isUpdate())
+    {
+      Node n(op.getNode());
+      //if(n.isA<surfsara::ast::Object>())
+      //{
+      //  n.as<surfsara::ast::Object>().set("index", Integer(1));
+      //}
+      //ret.as<surfsara::ast::Array>().pushBack(op.getNode());
+      //n.set("index", op.getPath());
+      //op.set("index", op.get const String & k, Node && node);
+      //nodes.push_back(n);
+    }
+  }
+  std::cout << formatJson(ret) << std::endl;
+  return ret;
 }
 
 surfsara::handle::Operation surfsara::handle::Update(const std::string & url,

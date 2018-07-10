@@ -11,19 +11,15 @@ URL=https://epic4.storage.surfsara.nl:8007/api/handles/21.T12995
 ### Create a resource
 
 ```
-./handle create $URL auto '{"values":
-                        [
-                         {"index":1,
-                          "type":"URL",
-                          "data": {"format": "string",
-                                   "value":"https://ndownloader.figshare.com/files/2292172"}},
-                         {"index": 100,
-                          "type": "HS_ADMIN",
-                          "data": {"format": "admin",
-                                   "value": {"handle": "0.NA/21.T12995",
-                                             "index": 200,
-                                             "permissions": "011111110011"}}}
-                     ]}'
+./handle create $URL auto \
+    1:'{"type":"URL", 
+        "data": {"format": "string",
+                 "value":"https://ndownloader.figshare.com/files/2292172"}}' \
+    100:'{"type": "HS_ADMIN",
+          "data": {"format": "admin",
+                    "value": {"handle": "0.NA/21.T12995",
+                              "index": 200,
+                              "permissions": "011111110011"}}}'
 ```
 
 
