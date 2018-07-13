@@ -33,23 +33,34 @@ namespace surfsara
   namespace curl
   {
     class Curl;
+    class BasicCurlOpt;
 
     namespace details
     {
-      class BasicCurlOpt;
-
       template<typename T>
       struct OptConverter;
     }
-    static std::shared_ptr<details::BasicCurlOpt> Url(const std::string & url);
-    static std::shared_ptr<details::BasicCurlOpt> Port(long port);
-    static std::shared_ptr<details::BasicCurlOpt> Data(const std::string & data);
-    static std::shared_ptr<details::BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers);
-    static std::shared_ptr<details::BasicCurlOpt> Header(const std::vector<std::string> & _headers);
-    static std::shared_ptr<details::BasicCurlOpt> Verbose(bool verbose);
+    static std::shared_ptr<BasicCurlOpt> Url(const std::string & url,
+                                             const std::vector<std::pair<std::string, std::string>> & parameters={});
+    static std::shared_ptr<BasicCurlOpt> Port(long port);
+    static std::shared_ptr<BasicCurlOpt> SslPem(const std::string & _certFile,
+                                                const std::string & _keyFile,
+                                                bool                _insecure = true,
+                                                const std::string & _passphrase = "",
+                                                const std::string & _caCert = "");
+    std::shared_ptr<BasicCurlOpt> HttpAuth(const std::string & _user,
+                                           const std::string & _password,
+                                           bool                _insecure = true,
+                                           const std::string & _caCert = "");
+    static std::shared_ptr<BasicCurlOpt> Delete();
+    static std::shared_ptr<BasicCurlOpt> Data(const std::string & data);
+    static std::shared_ptr<BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers);
+    static std::shared_ptr<BasicCurlOpt> Header(const std::vector<std::string> & _headers);
+    static std::shared_ptr<BasicCurlOpt> Verbose(bool verbose);
   }
 }
 
+#include <iostream>
 /////////////////////////////////////////////////////////////
 //
 // details
@@ -59,6 +70,13 @@ namespace surfsara
 {
   namespace curl
   {
+    class BasicCurlOpt
+    {
+    public:
+      virtual ~BasicCurlOpt() {}
+      virtual CURLcode set(CURL *curl) const = 0;
+    };
+    
     namespace details
     {
       template<typename T>
@@ -79,13 +97,6 @@ namespace surfsara
         static const char * convert(const std::string& value) { return value.c_str(); }
       };
 
-      class BasicCurlOpt
-      {
-      public:
-        virtual ~BasicCurlOpt() {}
-        virtual CURLcode set(CURL *curl) const = 0;
-      };
-
       ///// CurlOpt /////
       template<typename T, CURLoption OPTION, typename CONV = OptConverter<T> >
       class CurlOpt : public BasicCurlOpt
@@ -97,6 +108,50 @@ namespace surfsara
         }
       protected:
         T value;
+      };
+
+      class Url : public BasicCurlOpt
+      {
+      public:
+        Url(const std::string & _url,
+            const std::vector<std::pair<std::string, std::string>> & _parameters) :
+          url(_url), parameters(_parameters)
+        {
+        }
+        
+        CURLcode set(CURL *curl) const override
+        {
+          std::string query;
+          for(auto p : parameters)
+          {
+            if(query.empty())
+            {
+              query += "?";
+            }
+            else
+            {
+              query += "&";
+            }
+            char * key = curl_easy_escape(curl, p.first.c_str(), p.first.size());
+            char * value = curl_easy_escape(curl, p.second.c_str(), p.second.size());
+            query += key;
+            query += "=";
+            query += value;
+            if(key)
+            {
+              curl_free(key);
+            }
+            if(value)
+            {
+              curl_free(value);
+            }
+          }
+          std::string tmp = url + query;
+          curl_easy_setopt(curl, CURLOPT_URL, tmp.c_str());
+        }
+      private:
+        std::string url;
+        std::vector<std::pair<std::string, std::string>> parameters;
       };
 
       ///// DataBuffer /////
@@ -147,30 +202,138 @@ namespace surfsara
       private:
         std::vector<std::string> headers;
       };
+
+      ///////////////// SSL /////////////////
+      class SslPem : public BasicCurlOpt
+      {
+      public:
+        SslPem(const std::string & _certFile,
+               const std::string & _keyFile,
+               bool                _insecure,
+               const std::string & _passphrase,
+               const std::string & _caCert)
+          : certFile(_certFile),
+            keyFile(_keyFile),
+            insecure(_insecure),
+            passphrase(_passphrase),
+            caCertFile(_caCert)
+        {
+        }
+
+        virtual CURLcode set(CURL *curl) const override
+        {
+          curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
+          curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile.c_str());
+          curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "PEM");
+          curl_easy_setopt(curl, CURLOPT_SSLKEY, keyFile.c_str());
+          if(!passphrase.empty())
+          {
+            curl_easy_setopt(curl, CURLOPT_KEYPASSWD, passphrase.c_str());
+          }
+          if(insecure)
+          {
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+          }
+          else
+          {
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+          }
+          if(!caCertFile.empty())
+          {
+            curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+          }
+        }
+      private:
+        std::string certFile;
+        std::string keyFile;
+        std::string passphrase;
+        std::string caCertFile;
+        bool insecure;
+      };
       
+      ///////////////// SSL /////////////////
+      class HttpAuth : public BasicCurlOpt
+      {
+      public:
+        HttpAuth(const std::string & _user,
+                 const std::string & _password,
+                 bool                _insecure,
+                 const std::string & _caCertFile) : user(_user),
+                                                    password(_password),
+                                                    caCertFile(_caCertFile),
+                                                    insecure(_insecure) {}
+        virtual CURLcode set(CURL *curl) const override
+        {
+          if(insecure)
+          {
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+          }
+          else
+          {
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+          }
+          if(!caCertFile.empty())
+          {
+            curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+          }
+          curl_easy_setopt(curl, CURLOPT_USERPWD, (user + ":" + password).c_str());
+        }
+      private:
+        std::string user;
+        std::string password;
+        std::string caCertFile;
+        bool insecure;
+
+      };
     } // details
 
-    std::shared_ptr<details::BasicCurlOpt> Url(const std::string & url) {
-      return std::make_shared<details::CurlOpt<std::string, CURLOPT_URL>>(url);
+    std::shared_ptr<BasicCurlOpt> Url(const std::string & url,
+                                      const std::vector<std::pair<std::string, std::string>> & parameters) {
+      return std::make_shared<details::Url>(url, parameters);
+    }
+    
+    std::shared_ptr<BasicCurlOpt> SslPem(const std::string & _CACertFile,
+                                         const std::string & _certFile,
+                                         bool                _insecure,
+                                         const std::string & _passphrase,
+                                         const std::string & _caCert)
+    {
+      return std::make_shared<details::SslPem>(_CACertFile,
+                                               _certFile,
+                                               _insecure,
+                                               _passphrase,
+                                               _caCert);
     }
 
-    std::shared_ptr<details::BasicCurlOpt> Port(long port) {
+    std::shared_ptr<BasicCurlOpt> HttpAuth(const std::string & _user,
+                                           const std::string & _password,
+                                           bool                _insecure,
+                                           const std::string & _caCert)
+    {
+      return std::make_shared<details::HttpAuth>(_user, _password, _insecure, _caCert);
+    }
+
+    std::shared_ptr<BasicCurlOpt> Port(long port) {
       return std::make_shared<details::CurlOpt<long, CURLOPT_PORT>>(port);
     }
 
-    std::shared_ptr<details::BasicCurlOpt> Data(const std::string & data) {
+    std::shared_ptr<BasicCurlOpt> Delete() {
+      return std::make_shared<details::CurlOpt<std::string, CURLOPT_CUSTOMREQUEST>>("DELETE");
+    }
+
+    std::shared_ptr<BasicCurlOpt> Data(const std::string & data) {
       return std::make_shared<details::DataBuffer>(data);
     }
 
-    std::shared_ptr<details::BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers) {
+    std::shared_ptr<BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers) {
       return std::make_shared<details::HeaderList>(_headers);
     }
     
-    std::shared_ptr<details::BasicCurlOpt> Header(const std::vector<std::string> & _headers) {
+    std::shared_ptr<BasicCurlOpt> Header(const std::vector<std::string> & _headers) {
       return std::make_shared<details::HeaderList>(_headers);
     }
 
-    std::shared_ptr<details::BasicCurlOpt> Verbose(bool verbose) {
+    std::shared_ptr<BasicCurlOpt> Verbose(bool verbose) {
       return std::make_shared<details::CurlOpt<long, CURLOPT_VERBOSE>>(verbose ? 1L : 0L);
     }
   }

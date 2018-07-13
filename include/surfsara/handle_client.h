@@ -1,5 +1,6 @@
 #pragma once
-#include <surfsara/handle_operation.h>
+#include <surfsara/handle_result.h>
+#include <surfsara/handle_validation.h>
 #include <surfsara/curl.h>
 #include <surfsara/json_format.h>
 #include <surfsara/json_parser.h>
@@ -8,21 +9,35 @@ namespace surfsara
 {
   namespace handle
   {
-    using Node = ::surfsara::ast::Node;
-
     class HandleClient
     {
     public:
       HandleClient(const std::string & url,
                    const std::string & uuid,
-                   std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> options);
-      Node create(const std::vector<Operation> & operations);
-      Node update(const std::vector<Operation> & operations);
-      Node remove();
+                   std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> options = {},
+                   bool _verbose = false);
+
+      inline Result create(const surfsara::ast::Node & node);
+      inline Result get();
+      inline Result update(const surfsara::ast::Node & node);
+      inline Result removeIndices(const std::vector<int> & indices);
+      inline Result remove();
+
+      /* helpers */
+      inline void generateSuffixIfRequired();
+      inline const std::string& getUrl() const;
+      inline std::string getUrlWithHandle() const;
+      inline const std::string& getHandle() const;
+
     private:
+      //inline Result deleteIndices(const std::vector<Operation> & operations);
+      inline static void extractResponse(Result & res, const surfsara::ast::Node & json);
+      inline Result curlRequest(const std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> & optionsCopy);
+      
       std::string url;
-      std::string uuid;
-      std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> options;
+      std::string handle;
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> options;
+      bool verbose;
     };
   }
 }
@@ -37,127 +52,156 @@ namespace surfsara
 #include <boost/uuid/uuid_io.hpp>
 #include <sstream>
 
-inline surfsara::handle::HandleClient::HandleClient(const std::string & _url,
-                                                    const std::string & _uuid,
-                                                    std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> _options)
-  : url(_url), uuid(_uuid), options(_options)
+namespace surfsara
 {
+  namespace handle
+  {
+    inline HandleClient::HandleClient(const std::string & _url,
+                                      const std::string & _handle,
+                                      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> _options,
+                                      bool _verbose)
+      : url(_url), handle(_handle), options(_options), verbose(_verbose)
+    {
+    }
+
+    inline Result HandleClient::create(const Node & node)
+    {
+      using namespace surfsara::ast;
+      generateSuffixIfRequired();
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
+      optionsCopy.push_back(surfsara::curl::Url(getUrlWithHandle(),
+                                                {{"overwrite","false"}}));
+      optionsCopy.push_back(surfsara::curl::Header({"Content-Type:application/json", "Authorization: Handle clientCert=\"true\""}));
+
+
+      if(verbose)
+      {
+        std::cout << "request data:" << std::endl
+                  << surfsara::ast::formatJson(node, true) << std::endl;
+      }
+      optionsCopy.push_back(surfsara::curl::Data(surfsara::ast::formatJson(node)));
+      return curlRequest(optionsCopy);
+    }
+
+    inline Result HandleClient::get()
+    {
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
+      optionsCopy.push_back(surfsara::curl::Url(getUrlWithHandle(), {}));
+      return curlRequest(optionsCopy);
+    }
+
+    inline Result HandleClient::update(const surfsara::ast::Node & node)
+    {
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
+      std::vector<std::pair<std::string, std::string>> options{{"overwrite", "true"}};
+      for(auto idx : getIndices(node))
+      {
+        options.push_back(std::make_pair("index", std::to_string(idx)));
+      }
+      optionsCopy.push_back(surfsara::curl::Url(getUrlWithHandle(), options));
+      optionsCopy.push_back(surfsara::curl::Header({"Content-Type:application/json", "Authorization: Handle clientCert=\"true\""}));
+      optionsCopy.push_back(surfsara::curl::Data(surfsara::ast::formatJson(node)));
+      if(verbose)
+      {
+        std::cout << "request data:" << std::endl
+                  << surfsara::ast::formatJson(node, true) << std::endl;
+      }
+      return curlRequest(optionsCopy);
+    }
+    
+    inline Result HandleClient::removeIndices(const std::vector<int> & indices)
+    {
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
+      optionsCopy.push_back(surfsara::curl::Header({"Content-Type:application/json", "Authorization: Handle clientCert=\"true\""}));
+      std::vector<std::pair<std::string, std::string>> params;
+      for(auto ind : indices)
+      {
+        params.push_back(std::make_pair("index", std::to_string(ind)));
+      }
+      optionsCopy.push_back(surfsara::curl::Delete());
+      optionsCopy.push_back(surfsara::curl::Url(getUrlWithHandle(), params));
+      return curlRequest(optionsCopy);
+
+    }
+
+    inline Result HandleClient::remove()
+    {
+      std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
+      optionsCopy.push_back(surfsara::curl::Header({"Content-Type:application/json", "Authorization: Handle clientCert=\"true\""}));
+      optionsCopy.push_back(surfsara::curl::Delete());
+      optionsCopy.push_back(surfsara::curl::Url(getUrlWithHandle(), {}));
+      return curlRequest(optionsCopy);
+    }
+  }
 }
 
-surfsara::ast::Node surfsara::handle::HandleClient::create(const std::vector<Operation> & operations)
+namespace surfsara
 {
-  using namespace surfsara::ast;
-  std::stringstream surl;
-  surl << url;
-  if(url.back() != '/')
+  namespace handle
   {
-    surl << "/";
-  }
-  if(uuid.empty())
-  {
-    boost::uuids::random_generator gen;
-    surl << gen();
-  }
-  else
-  {
-    surl << uuid;
-  }
-  std::cout << surl.str() << std::endl;
+    inline void HandleClient::extractResponse(Result & res, const surfsara::ast::Node & json)
+    {
+      using namespace surfsara::ast;
+      if(json.isA<Object>())
+      {
+        if(json.as<Object>().has("responseCode") &&
+           json.as<Object>().get("responseCode").isA<Integer>())
+        {
+          res.handleCode = json.as<Object>().get("responseCode").as<Integer>();
+        }
+        if(json.as<Object>().has("handle") &&
+           json.as<Object>().get("handle").isA<String>())
+        {
+          res.handle = json.as<Object>().get("handle").as<String>();
+        }
+      }
+    }
 
-  std::vector<std::shared_ptr<surfsara::curl::details::BasicCurlOpt>> optionsCopy(options);
-  optionsCopy.push_back(surfsara::curl::Url(surl.str()));
-  Node valueList(Object({{String("values"),
-                          Operation::operations2list(operations)}}));
-  std::string body = surfsara::ast::formatJson(valueList);
-  std::cout << body << std::endl;
-  optionsCopy.push_back(surfsara::curl::Data(body));
-  surfsara::curl::Curl curl(optionsCopy);
-  surfsara::curl::Result res = curl.request();
-  if(!res.success)
-  {
-    throw surfsara::curl::Error(res);
+    inline Result HandleClient::curlRequest(const std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> & optionsCopy)
+    {
+      using namespace surfsara::ast;
+      Result res;
+      surfsara::curl::Curl curl(optionsCopy);
+      res.curlResult = curl.request();
+      try
+      {
+        res.data = surfsara::ast::parseJson(res.curlResult.body);
+        extractResponse(res, res.data);
+      }
+      catch(...)
+      {
+        res.jsonDecodeError = true;
+      }
+      res.success = (res.handleCode == 1) && res.curlResult.success && !res.jsonDecodeError;
+      return res;
+    }
+
+    void HandleClient::generateSuffixIfRequired()
+    {
+      std::size_t pos = handle.find('/');
+      if(pos == std::string::npos)
+      {
+        std::stringstream tmp;
+        boost::uuids::random_generator gen;
+        // no suffix defined
+        tmp << "/" << gen();
+        handle += tmp.str();
+      }
+    }
+
+    const std::string& HandleClient::getHandle() const
+    {
+      return handle;
+    }
+
+    const std::string& HandleClient::getUrl() const
+    {
+      return url;
+    }
+
+    std::string HandleClient::getUrlWithHandle() const
+    {
+      return url + "/" + handle;
+    }
   }
-  return surfsara::ast::parseJson(res.body);
 }
-
-surfsara::ast::Node surfsara::handle::HandleClient::update(const std::vector<Operation> & operations)
-{
-  return surfsara::ast::Node();
-}
-
-surfsara::ast::Node surfsara::handle::HandleClient::remove()
-{
-  return surfsara::ast::Node();
-}
-
-//////////////////////////////////
-// adding handle and assigns uuid
-//
-// ./handle create url/prefix '[{ index: 1, type: type, data: {"abc": 1}}]'
-//
-//////////////////////////////////
-// get handle
-//
-// ./handle get url/prefix/suffix                            # all -> list
-// ./handle get url/prefix/suffix?index=1&index=2&type=XX    # filtered objects -> list
-// ./handle get url/prefix/suffix/{INDEX}                    # specific index -> object
-// ./handle get url/prefix/suffix/{INDEX}/type               # type for specific index -> string
-// ./handle get url/prefix/suffix/{INDEX}/data               # data object for specific index -> object
-// ./handle get url/prefix/suffix/{INDEX}/data/field         # field of data object -> atom or object
-// ./handle get url/prefix/suffix/{INDEX}/data/pa/th         # field of suboject -> atom or object
-//
-//////////////////////////////////
-// update
-//
-// replace all indices
-// ./handle put url/prefix/suffix/ '[{ index: 1, type: type, data: {"abc": 1}}]'
-//
-// type and data for one index
-// ./handle put url/prefix/suffix/{INDEX} '{"type": {TYPE}", "data": {...}}'
-//
-// only type
-// ./handle put url/prefix/suffix/{INDEX}/type {TYPE}
-//
-// only data
-// ./handle put url/prefix/suffix/{INDEX}/data '{"abc": 1}'
-//
-// specific field
-// ./handle put url/prefix/suffix/{INDEX}/data/path/to/field 42
-#if 0              
-Handle handle("http://handle/prefix", option);
-
-std::string json =
-  R"___(
-[{"index": 1, "type": "url", "data": { "abc": 1, "def": 2}},
- {"index": 10, "type": "url", "data": { "abc": 1, "def": 2}}]
-)___";
-
-/* iRods
-handleCreate(url, json) -> handleid, success, msg
- */
-handle.create(json);
-
-
-handle.update("{suffix}",
-              { Update("1/data/url", Node("http://dffdff")),
-                Delete("100/data/this/remove_this_key"),
-                Update("1/data/retries", Node(1)) });
-
-/* iRods
-handleUpdate(list(url, list(list("U", "1/data/url", '"http://dffdff"'),
-             list("D", "100/data/this/remove_this_key"),
-             list("U", "1/dat/retries", 1)))) --> success, msg
-*/
-handle.update("{suffix}",
-              { Update("1/data/url", Node("http://dffdff")),
-                Delete("100/data/this/remove_this_key"),
-                Update("1/data/retries", Node(1)) });
-
-
-/*
-handleRemove(url)
-*/
-handle.remove("{suffix}");
-
-      
-#endif

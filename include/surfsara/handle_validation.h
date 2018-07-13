@@ -1,6 +1,7 @@
 #pragma once
 #include <stdexcept>
 #include <vector>
+#include <set>
 #include <string>
 #include <boost/algorithm/string/join.hpp>
 #include <surfsara/ast.h>
@@ -15,19 +16,11 @@ namespace surfsara
     class ValidationError : public std::invalid_argument
     {
     public:
-      ValidationError(std::vector<std::string> & errs);
+      ValidationError(const std::vector<std::string> & errs);
     };
 
-    /**
-       Validate:
-       [{ "index": {INDEX},
-          "type": {TYPE},
-          "data": {DATA} },
-        ...]
-      @returns vector of error messages
-    */
-    std::vector<std::string> validateResource(const Node & node);
-    std::vector<std::string> validateIndex(const Node & node);
+    inline std::vector<int> getIndices(const surfsara::ast::Node & node);
+    inline std::vector<int> getIndices(const surfsara::ast::Array & array);
   }
 }
 
@@ -36,68 +29,102 @@ namespace surfsara
 // implmentation
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline surfsara::handle::ValidationError::ValidationError(std::vector<std::string> & errs)
-  : std::invalid_argument(boost::algorithm::join(errs, " "))
+namespace surfsara
 {
-}
-
-std::vector<std::string> surfsara::handle::validateIndex(const Node & node)
-{
-  using Object = surfsara::ast::Object;
-  using Integer = surfsara::ast::Integer;
-  std::vector<std::string> ret;
-  std::cout << formatJson(node) << std::endl;
-  if(node.isA<Object>())
+  namespace handle
   {
-    std::vector<std::string> essentials{"type", "index", "data"};
-    bool ok = true;
-    for(auto ess : essentials)
+    inline ValidationError::ValidationError(const std::vector<std::string> & errs)
+      : std::invalid_argument(boost::algorithm::join(errs, " "))
     {
-      if(!node.as<Object>().has(ess))
-      {
-        ret.push_back(std::string("missing key: ") + ess);
-        ok = false;
-      }
     }
-    if(ok)
-    {
-      if(!node.as<Object>().get("index").isA<Integer>())
-      {
-        ret.push_back(std::string("index must be an integer."));
-      }
-      if(!node.as<Object>().get("data").isA<Object>())
-      {
-        ret.push_back(std::string("data must be an object."));
-      }
-    }
-  }
-  else
-  {
-    ret.push_back(std::string("expected a object, ") +
-                  node.typeName() +
-                  " given: " +
-                  surfsara::ast::formatJson(node));
-  }
-  return ret;
-}
 
-std::vector<std::string> surfsara::handle::validateResource(const Node & node)
-{
-  using Array = surfsara::ast::Array;
-  using Object = surfsara::ast::Object;
-  std::vector<std::string> ret;
-  if(node.isA<Array>())
-  {
-    node.as<Array>().forEach([&ret](const Node & n) {
-        auto tmp = surfsara::handle::validateIndex(n);
-        ret.insert(ret.end(), tmp.begin(), tmp.end());
-    });
-  }
-  else
-  {
-    ret.push_back(std::string("expected a list, ") + node.typeName() + " given.");
-  }
-  return ret;
-}
+    std::vector<int> getIndices(const surfsara::ast::Array & array)
+    {
+      using Object = surfsara::ast::Object;
+      using Integer = surfsara::ast::Integer;
+      std::set<int> ret;
+      std::vector<std::string> errs;
+      array.forEach([&ret, &errs](const Node & node) {
+          if(node.isA<Object>())
+          {
+            if(node.as<Object>().has("index"))
+            {
+              if(node.as<Object>().get("index").isA<Integer>())
+              {
+                int i = node.as<Object>().get("index").as<Integer>();
+                if(ret.find(i) == ret.end())
+                {
+                  ret.insert(i);
+                }
+                else
+                {
+                  errs.push_back("duplicate index " +
+                                 std::to_string(i) + ":" +
+                                 surfsara::ast::formatJson(node));
+                }
+              }
+              else
+              {
+                errs.push_back(std::string("key 'index' must be an integer."));
+              }
+            }
+            else
+            {
+              errs.push_back(std::string("missing key 'index'"));
+            }
+          }
+          else
+          {
+            errs.push_back(std::string("expected a object, ") +
+                           node.typeName() +
+                           " given: " +
+                           surfsara::ast::formatJson(node));
+          }
+        });
+      if(!errs.empty())
+      {
+        throw ValidationError(errs);
+      }
+      return std::vector<int>(ret.begin(), ret.end());
+    }
+
+    std::vector<int> getIndices(const surfsara::ast::Node & node)
+    {
+      using Object = surfsara::ast::Object;
+      using Array = surfsara::ast::Array;
+      std::vector<int> ret;
+      std::vector<std::string> errs;
+      if(node.isA<Object>())
+      {
+        if(node.as<Object>().has("values"))
+        {
+          if(node.as<Object>()["values"].isA<Array>())
+          {
+            return getIndices(node.as<Object>()["values"].as<Array>());
+          }
+          else
+          {
+            errs.push_back(std::string("invalid type ") +
+                           node.as<Object>()["values"].typeName() +
+                           " expected Array");
+          }
+        }
+        else
+        {
+          errs.push_back(std::string("values not found in top level object"));
+        }
+      }
+      else
+      {
+        errs.push_back(std::string("expected object, given ") + node.typeName());
+      }
+      if(!errs.empty())
+      {
+        throw ValidationError(errs);
+      }
+      return ret;
+    }
+  } // handle 
+} // surfsara
 
 
