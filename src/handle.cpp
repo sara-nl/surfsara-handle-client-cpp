@@ -30,6 +30,7 @@ class HandleCreate : public HandleOperation
 public:
   HandleCreate() : HandleOperation("create",
                                    "create <JSON>: create a new PID from json\n") {}
+
   virtual int parse(HandleProgramArgs & args) override
   {
     if(args.args->getValue().size() != 1)
@@ -298,18 +299,8 @@ public:
                                                            args.config.irods_webdav_prefix->getValue(),
                                                            args.config.irods_webdav_port->getValue()));
 
-    //client.create(args.args->getValue().front());
-    //
-    //surfsara::handle::Result res;
-    //Node node(surfsara::ast::parseJson());
-    //res = client.create(node);
-    //return finalize(args, res);
-    //HandleClient client(createHandleClient(args, args.config.handle_prefix->getValue()));
-    //surfsara::handle::Result res;
-    //Node node(surfsara::ast::parseJson(args.args->getValue().front()));
-    //res = client.create(node);
-    //return finalize(args, res);
-    return 8;
+    auto res = client.create(args.args->getValue().front());
+    return finalize(args, res);
   }
 };
 
@@ -325,12 +316,141 @@ public:
                                              "iupdate <OLD_PATH> <NEW_PATH>: update PID for irods object\n") {}
   virtual int parse(HandleProgramArgs & args) override
   {
-    return 8;
+    if(args.args->getValue().size() != 2)
+    {
+      std::cerr << "exactly two arguments (irods old path / new path) required for update operation" << std::endl;
+      return 8;
+    }
+    return 0;
   }
 
   virtual int exec(HandleProgramArgs & args) override
   {
-    return 8;
+    using ReverseLookupClient = surfsara::handle::ReverseLookupClient;
+    using HandleClient = surfsara::handle::HandleClient;
+    using IRodsHandleClient = surfsara::handle::IRodsHandleClient;
+    auto handleClient = createHandleClient(args);
+    auto reverseLookupClient = std::make_shared<ReverseLookupClient>(args.config.lookup_url->getValue(),
+                                                                     args.config.handle_prefix->getValue(),
+                                                                     std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
+                                                                       surfsara::curl::Verbose(args.verbose->isSet()),
+                                                                         surfsara::curl::Port(args.config.lookup_port->getValue()),
+                                                                         surfsara::curl::HttpAuth(args.config.lookup_user->getValue(),
+                                                                                                  args.config.lookup_password->getValue(),
+                                                                                                  args.config.lookup_insecure->isSet())},
+                                                                     (args.config.lookup_limit->isSet() ? args.config.lookup_limit->getValue() : 100),
+                                                                     (args.config.lookup_page->isSet() ? args.config.lookup_page->getValue() : 0),
+                                                                     args.verbose->isSet());
+    IRodsHandleClient client(handleClient, reverseLookupClient,
+                             surfsara::handle::IRodsConfig(args.config.irods_url_prefix->getValue(),
+                                                           args.config.irods_server->getValue(),
+                                                           args.config.handle_prefix->getValue(),
+                                                           args.config.irods_port->getValue(),
+                                                           args.config.irods_webdav_prefix->getValue(),
+                                                           args.config.irods_webdav_port->getValue()));
+
+    auto res = client.update(args.args->getValue()[0], args.args->getValue()[1]);
+    return finalize(args, res);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Delete IRods Object
+//
+////////////////////////////////////////////////////////////////////////////////
+class HandleDeleteIRodsObject : public HandleOperation
+{
+public:
+  HandleDeleteIRodsObject(): HandleOperation("idelete",
+                                             "idelete <PATH>: remove path for irods object\n") {}
+  virtual int parse(HandleProgramArgs & args) override
+  {
+    if(args.args->getValue().size() != 1)
+    {
+      std::cerr << "exactly one argument (irods path) required for delete operation" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(HandleProgramArgs & args) override
+  {
+    using ReverseLookupClient = surfsara::handle::ReverseLookupClient;
+    using HandleClient = surfsara::handle::HandleClient;
+    using IRodsHandleClient = surfsara::handle::IRodsHandleClient;
+    auto handleClient = createHandleClient(args);
+    auto reverseLookupClient = std::make_shared<ReverseLookupClient>(args.config.lookup_url->getValue(),
+                                                                     args.config.handle_prefix->getValue(),
+                                                                     std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
+                                                                       surfsara::curl::Verbose(args.verbose->isSet()),
+                                                                         surfsara::curl::Port(args.config.lookup_port->getValue()),
+                                                                         surfsara::curl::HttpAuth(args.config.lookup_user->getValue(),
+                                                                                                  args.config.lookup_password->getValue(),
+                                                                                                  args.config.lookup_insecure->isSet())},
+                                                                     (args.config.lookup_limit->isSet() ? args.config.lookup_limit->getValue() : 100),
+                                                                     (args.config.lookup_page->isSet() ? args.config.lookup_page->getValue() : 0),
+                                                                     args.verbose->isSet());
+    IRodsHandleClient client(handleClient, reverseLookupClient,
+                             surfsara::handle::IRodsConfig(args.config.irods_url_prefix->getValue(),
+                                                           args.config.irods_server->getValue(),
+                                                           args.config.handle_prefix->getValue(),
+                                                           args.config.irods_port->getValue(),
+                                                           args.config.irods_webdav_prefix->getValue(),
+                                                           args.config.irods_webdav_port->getValue()));
+
+    auto res = client.remove(args.args->getValue()[0]);
+    return finalize(args, res);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Get IRods Object
+//
+////////////////////////////////////////////////////////////////////////////////
+class HandleGetIRodsObject : public HandleOperation
+{
+public:
+  HandleGetIRodsObject(): HandleOperation("iget",
+                                          "iget <PATH>: get info for given irods path\n") {}
+  virtual int parse(HandleProgramArgs & args) override
+  {
+    if(args.args->getValue().size() != 1)
+    {
+      std::cerr << "exactly one argument (irods path) required for get operation" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(HandleProgramArgs & args) override
+  {
+    using ReverseLookupClient = surfsara::handle::ReverseLookupClient;
+    using HandleClient = surfsara::handle::HandleClient;
+    using IRodsHandleClient = surfsara::handle::IRodsHandleClient;
+    auto handleClient = createHandleClient(args);
+    auto reverseLookupClient = std::make_shared<ReverseLookupClient>(args.config.lookup_url->getValue(),
+                                                                     args.config.handle_prefix->getValue(),
+                                                                     std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
+                                                                       surfsara::curl::Verbose(args.verbose->isSet()),
+                                                                         surfsara::curl::Port(args.config.lookup_port->getValue()),
+                                                                         surfsara::curl::HttpAuth(args.config.lookup_user->getValue(),
+                                                                                                  args.config.lookup_password->getValue(),
+                                                                                                  args.config.lookup_insecure->isSet())},
+                                                                     (args.config.lookup_limit->isSet() ? args.config.lookup_limit->getValue() : 100),
+                                                                     (args.config.lookup_page->isSet() ? args.config.lookup_page->getValue() : 0),
+                                                                     args.verbose->isSet());
+    IRodsHandleClient client(handleClient, reverseLookupClient,
+                             surfsara::handle::IRodsConfig(args.config.irods_url_prefix->getValue(),
+                                                           args.config.irods_server->getValue(),
+                                                           args.config.handle_prefix->getValue(),
+                                                           args.config.irods_port->getValue(),
+                                                           args.config.irods_webdav_prefix->getValue(),
+                                                           args.config.irods_webdav_port->getValue()));
+
+    auto res = client.get(args.args->getValue()[0]);
+    return finalize(args, res);
   }
 };
 
@@ -347,6 +467,9 @@ int main(int argc, const char ** argv)
   args.addOperation<HandleDeletePid>();
   args.addOperation<HandleCreateIRodsObject>();
   args.addOperation<HandleUpdateIRodsObject>();
+  args.addOperation<HandleDeleteIRodsObject>();
+  args.addOperation<HandleGetIRodsObject>();
+  
   args.registerArguments();
 
   auto op = args.parse(argc, argv);

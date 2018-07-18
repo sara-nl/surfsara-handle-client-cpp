@@ -70,14 +70,15 @@ private:
 bool HandleOperation::checkLookupParameters(HandleProgramArgs & args)
 {
   bool ok = true;
-  std::vector<std::string> req{"lookup_url", "lookup_port", "lookup_user", "lookup_password"};
-  for(auto p: req)
+  if(!args.config.lookup_url->isSet())
   {
-    if(!args.parser.isSet(p))
-    {
-      std::cerr << "required argument --" << p << std::endl;
-      ok = false;
-    }
+    std::cerr << "required argument --lookup_url" << std::endl;
+    ok = false;
+  }
+  if(!args.config.lookup_port->isSet())
+  {
+    std::cerr << "required argument --lookup_port" << std::endl;
+    ok = false;
   }
   return ok;
 }
@@ -93,12 +94,12 @@ std::shared_ptr<surfsara::handle::HandleClient> HandleOperation::createHandleCli
   return std::make_shared<HandleClient>(args.config.handle_url->getValue(),
                                         std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
                                           surfsara::curl::Verbose(args.verbose->isSet()),
-                                            surfsara::curl::Port(args.config.handle_port->getValue()),
-                                            surfsara::curl::SslPem(args.config.handle_cert->getValue(),
-                                               args.config.handle_key->getValue(),
-                                                                   args.config.handle_insecure->isSet(),
-                                                                   passphrase,
-                                                                   args.config.handle_caCert->getValue())},
+                                          surfsara::curl::Port(args.config.handle_port->getValue()),
+                                          surfsara::curl::SslPem(args.config.handle_cert->getValue(),
+                                          args.config.handle_key->getValue(),
+                                                                 args.config.handle_insecure->isSet(),
+                                                                 passphrase,
+                                                                 args.config.handle_caCert->getValue())},
                                         args.verbose->isSet());
 }
 
@@ -139,10 +140,6 @@ inline void HandleProgramArgs::registerArguments()
 {
   operation = parser.addPositionalValue<std::string>("OPERATION",
                                                      Cli::Doc(getOperationsString() + "\n" + getOperationsHelp()));
-  //handle = parser.addPositionalValue<std::string>("JSON/OLD_PATH",
-  //Cli::Doc("prefix/suffix"));
-  //handle = parser.addPositionalValue<std::string>("NEW_PATH",
-  //Cli::Doc("prefix/suffix"));
   args                = parser.addPositionalMultipleValue<std::string>("ARGS", Cli::Doc("operation specific arguments"));
   help                = parser.addFlag('h', "help", Cli::Doc("show help"));
   verbose             = parser.addFlag('v', "verbose", Cli::Doc("verbose output"));

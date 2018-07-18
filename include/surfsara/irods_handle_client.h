@@ -54,6 +54,7 @@ namespace surfsara
       inline Result create(const std::string & path);
       inline Result update(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
+      inline Result get(const std::string & path);
 
     private:
       inline std::vector<int> update(IndexAllocator & alloc, surfsara::ast::Node & root, const std::string & path);
@@ -113,12 +114,23 @@ namespace surfsara
     {
       using Object = surfsara::ast::Object;
       using Array = surfsara::ast::Array;
+      using String = surfsara::ast::String;
+      using Integer = surfsara::ast::Integer;
       std::string url = surfsara::util::joinPath(config.urlPrefix, path);
       auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
       if(lookupResult.empty())
       {
         IndexAllocator alloc;
-        Node root = Object{{"values", Array({})}};
+        Object admin{
+          {"index", Integer(100)},
+          {"type", String("HS_ADMIN")},
+          {"data", Object({
+              {"format", String("admin")},
+              {"value", Object({
+                    {"handle", String(std::string("0.NA/") + config.irodsPrefix)},
+                    {"index", Integer(200)},
+                    {"permissions", String("011111110011")}})}})}};
+        Node root = Object{{"values", Array({admin})}};
         update(alloc, root, path);
         return handleClient->create(config.irodsPrefix, root);
       }
@@ -175,5 +187,21 @@ namespace surfsara
         return handleClient->remove(handle);
       }
     }
+
+    inline Result IRodsHandleClient::get(const std::string & path)
+    {
+      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      if(lookupResult.empty())
+      {
+        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+      }
+      else
+      {
+        std::string handle(lookupResult[0]);
+        return handleClient->get(handle);
+      }
+    }
+
   }
 }

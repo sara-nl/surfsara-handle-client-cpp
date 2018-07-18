@@ -82,13 +82,13 @@ TEST_CASE( "validateIndices", "[Handle]" )
 
 TEST_CASE("attempt to create index without free void throws", "[IndexAllocator]" )
 {
-  IndexAllocator alloc({1,2,3}, 4);
+  IndexAllocator alloc({1,2,3}, 1, 4);
   REQUIRE_THROWS(alloc());
 }
 
 TEST_CASE("create indices", "[IndexAllocator]" )
 {
-  IndexAllocator alloc({2,4,6}, 8);
+  IndexAllocator alloc({2,4,6}, 1, 8);
   REQUIRE(alloc() == 1);
   REQUIRE(alloc() == 3);
   REQUIRE(alloc() == 5);
@@ -104,20 +104,20 @@ TEST_CASE("update", "[Handle]" )
   updateIndex(alloc, root, "TEST_INDEX", String("value"));
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
-          "{\"index\":1,\"type\":\"TEST_INDEX\",\"value\":\"value\"}]}");
+          "{\"index\":1,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}]}");
   updateIndex(alloc, root, "TEST_INDEX", String("value2"));
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
-          "{\"index\":1,\"type\":\"TEST_INDEX\",\"value\":\"value2\"}]}");
+          "{\"index\":1,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value2\"}}]}");
   updateIndex(alloc, root, "TEST_INDEX2", String("value"));
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
-          "{\"index\":1,\"type\":\"TEST_INDEX\",\"value\":\"value2\"},"
-          "{\"index\":3,\"type\":\"TEST_INDEX2\",\"value\":\"value\"}]}");
+          "{\"index\":1,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value2\"}},"
+          "{\"index\":3,\"type\":\"TEST_INDEX2\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}]}");
   updateIndex(alloc, root, "TEST_INDEX", Undefined());
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
-          "{\"index\":3,\"type\":\"TEST_INDEX2\",\"value\":\"value\"}]}");
+          "{\"index\":3,\"type\":\"TEST_INDEX2\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}]}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,15 +141,15 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
       REQUIRE(prefix == "prefix");
-      REQUIRE(surfsara::ast::formatJson(node) == 
-              "{\"values\":["
-              "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-              "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/path/to/object.txt\"},"
-              "{\"index\":4,\"type\":\"IRODS_WEBDAV_URL\",\"value\":\"webdav://myserver/path/to/object.txt\"},"
-              "{\"index\":5,\"type\":\"IRODS_WEBDAV_PORT\",\"value\":80},"
-              "{\"index\":6,\"type\":\"URL\",\"value\":\"webdav://myserver/path/to/object.txt\"},"
-              "{\"index\":7,\"type\":\"PORT\",\"value\":80}]}");
+      Array arr = node.as<Object>()["values"].as<Array>();
+      REQUIRE(arr.size() == 8);
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":4,\"type\":\"IRODS_WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[5])=="{\"index\":5,\"type\":\"IRODS_WEBDAV_PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
+      REQUIRE(surfsara::ast::formatJson(arr[6])=="{\"index\":6,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[7])=="{\"index\":7,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
       Result res;
       return res;
     };
@@ -176,13 +176,13 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
                                        80));
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
-      REQUIRE(surfsara::ast::formatJson(node) ==
-              "{\"values\":["
-              "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-              "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/path/to/object.txt\"},"
-              "{\"index\":4,\"type\":\"URL\",\"value\":\"irods://myserver/path/to/object.txt\"},"
-              "{\"index\":5,\"type\":\"PORT\",\"value\":1247}]}");
+      Array arr = node.as<Object>()["values"].as<Array>();
+      REQUIRE(arr.size() == 6);
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[5])=="{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
       Result res;
       return res;
     };
@@ -261,11 +261,11 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
       Result res;
       res.success = true;
       res.data = surfsara::ast::parseJson("{\"values\":["
-                                          "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-                                          "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-                                          "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/path/to/object.txt\"},"
-                                          "{\"index\":4,\"type\":\"URL\",\"value\":\"irods://myserver/path/to/object.txt\"},"
-                                          "{\"index\":5,\"type\":\"PORT\",\"value\":1247}]}");
+                                          "{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}},"
+                                          "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}},"
+                                          "{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}},"
+                                          "{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}},"
+                                          "{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}]}");
       return res;
     };
 
@@ -275,15 +275,15 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
     {
       updated = true;
       REQUIRE(handle == "prefix-uuid");
-      REQUIRE(surfsara::ast::formatJson(node) ==
-              "{\"values\":["
-              "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-              "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/new/path/to/object.txt\"},"
-              "{\"index\":4,\"type\":\"URL\",\"value\":\"webdav://myserver/new/path/to/object.txt\"},"
-              "{\"index\":5,\"type\":\"PORT\",\"value\":80},"
-              "{\"index\":6,\"type\":\"IRODS_WEBDAV_URL\",\"value\":\"webdav://myserver/new/path/to/object.txt\"},"
-              "{\"index\":7,\"type\":\"IRODS_WEBDAV_PORT\",\"value\":80}]}");
+      Array arr = node.as<Object>()["values"].as<Array>();
+      REQUIRE(arr.size() == 7);
+      REQUIRE(surfsara::ast::formatJson(arr[0])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
+      REQUIRE(surfsara::ast::formatJson(arr[5])=="{\"index\":6,\"type\":\"IRODS_WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[6])=="{\"index\":7,\"type\":\"IRODS_WEBDAV_PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
       Result res;
       return res;
     };
@@ -322,13 +322,13 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
       Result res;
       res.success = true;
       res.data = surfsara::ast::parseJson("{\"values\":["
-                                          "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-                                          "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-                                          "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/new/path/to/object.txt\"},"
-                                          "{\"index\":4,\"type\":\"URL\",\"value\":\"webdav://myserver/new/path/to/object.txt\"},"
-                                          "{\"index\":5,\"type\":\"PORT\",\"value\":80},"
-                                          "{\"index\":6,\"type\":\"IRODS_WEBDAV_URL\",\"value\":\"webdav://myserver/new/path/to/object.txt\"},"
-                                          "{\"index\":7,\"type\":\"IRODS_WEBDAV_PORT\",\"value\":80}]}");
+                                          "{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}},"
+                                          "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}},"
+                                          "{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/new/path/to/object.txt\"}},"
+                                          "{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/new/path/to/object.txt\"}},"
+                                          "{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":80}},"
+                                          "{\"index\":6,\"type\":\"IRODS_WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/new/path/to/object.txt\"}},"
+                                          "{\"index\":7,\"type\":\"IRODS_WEBDAV_PORT\",\"data\":{\"format\":\"string\",\"value\":80}}]}");
       return res;
     };
 
@@ -338,14 +338,15 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
     {
       updated = true;
       REQUIRE(handle == "prefix-uuid");
-      REQUIRE(surfsara::ast::formatJson(node) ==
-              "{\"values\":["
-              "{\"index\":1,\"type\":\"IRODS_SERVER\",\"value\":\"myserver\"},"
-              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"value\":1247},"
-              "{\"index\":3,\"type\":\"IRODS_URL\",\"value\":\"irods://myserver/new/path/to/object.txt\"},"
-              "{\"index\":4,\"type\":\"URL\",\"value\":\"irods://myserver/new/path/to/object.txt\"},"
-              "{\"index\":5,\"type\":\"PORT\",\"value\":1247}]}");
+      Array arr = node.as<Object>()["values"].as<Array>();
+      REQUIRE(arr.size() == 5);
+      REQUIRE(surfsara::ast::formatJson(arr[0])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
       Result res;
+      res.success = true;
       return res;
     };
 

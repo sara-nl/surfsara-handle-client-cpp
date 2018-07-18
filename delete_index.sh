@@ -8,5 +8,5 @@ then
 fi
 
 set -x
-./handle $VERBOSE --config config.json delete $HANDLE 100
+./handle $VERBOSE --config config.json delete $HANDLE 7
 

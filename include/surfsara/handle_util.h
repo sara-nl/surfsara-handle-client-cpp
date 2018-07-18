@@ -22,6 +22,7 @@ namespace surfsara
     struct IndexAllocator
     {
       IndexAllocator(const std::vector<int> & used = {},
+                     int _minI = 1,
                      int _maxI = 100);
       inline surfsara::ast::Integer operator()();
     private:
@@ -64,7 +65,7 @@ namespace surfsara
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    inline IndexAllocator::IndexAllocator(const std::vector<int> & _used, int _maxI)
+    inline IndexAllocator::IndexAllocator(const std::vector<int> & _used, int _minI, int _maxI)
     {
       for(auto i : _used)
       {
@@ -75,7 +76,7 @@ namespace surfsara
       }
       used.insert(_maxI);
       itr = used.begin();
-      next = 0;
+      next = _minI - 1;
       maxI = _maxI;
     }
 
@@ -243,12 +244,13 @@ namespace surfsara
         {
           root.update("values/#", Node(Object{{"index", alloc()},
                                               {"type", String(type)},
-                                              {"value", value}}));
+                                              {"data", Object{{"format", "string"}, {"value", value}}}}));
         }
         else
         {
-          root.update("values/*/value", value, true, [&type](const Node & root, const std::vector<std::string> & path) {
+          root.update("values/*/data/value", value, true, [&type](const Node & root, const std::vector<std::string> & path) {
               std::vector<std::string> tp(path);
+              tp.pop_back();
               tp.pop_back();
               tp.push_back("type");
               return (root.find(tp) == String(type));

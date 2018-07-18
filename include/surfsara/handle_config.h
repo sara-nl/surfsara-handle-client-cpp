@@ -101,7 +101,7 @@ namespace surfsara
       auto node = surfsara::ast::parseJson(str);
       if(node.isA<surfsara::ast::Object>())
       {
-        for(const char * group : {"handle", "lookup", "irods2"})
+        for(const char * group : {"handle", "lookup", "irods"})
         {
           if(node.as<Object>().has(group))
           {
