@@ -1,6 +1,5 @@
 #pragma once
-//#include <surfsara/handle_result.h>
-//#include <surfsara/handle_validation.h>
+#include "i_reverse_lookup_client.h"
 #include <surfsara/curl.h>
 #include <surfsara/json_format.h>
 #include <surfsara/json_parser.h>
@@ -9,7 +8,7 @@ namespace surfsara
 {
   namespace handle
   {
-    class ReverseLookupClient
+    class ReverseLookupClient : public I_ReverseLookupClient
     {
     public:
       ReverseLookupClient(const std::string & url,
@@ -18,9 +17,12 @@ namespace surfsara
                           std::size_t _lookup_limit,
                           std::size_t _lookup_page,
                           bool _verbose = false);
-
-      inline std::vector<std::string> lookup(const std::vector<std::pair<std::string, std::string>> & query);
+      virtual std::vector<std::string> lookup(const std::vector<std::pair<std::string, std::string>> & query) override
+      {
+        return lookupImpl(query);
+      }
     private:
+      inline std::vector<std::string> lookupImpl(const std::vector<std::pair<std::string, std::string>> & query);
       std::string url;
       std::string prefix;
       std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> options;
@@ -53,7 +55,7 @@ namespace surfsara
     {
     }
 
-    inline std::vector<std::string> ReverseLookupClient::lookup(const std::vector<std::pair<std::string, std::string>> & _query)
+    inline std::vector<std::string> ReverseLookupClient::lookupImpl(const std::vector<std::pair<std::string, std::string>> & _query)
     {
       using Array = surfsara::ast::Array;
       using String = surfsara::ast::String;

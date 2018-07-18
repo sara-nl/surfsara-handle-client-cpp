@@ -1,0 +1,27 @@
+{
+  "handle":{
+    "url": "http://localhost/api/handles",
+    "port": 5000,
+    "default_prefix": "21.T12995",
+    "cert": null,
+    "key": null,
+    "insecure": null,
+    "passphrase": null
+  },
+  "lookup":{
+    "url": "http://localhost/hrls/handles",
+    "port": 5000,
+    "user": "21.T12995",
+    "password": null,
+    "insecure": null,
+    "limit": null,
+    "page": null
+  },
+  "irods":{
+    "server": null,
+    "port": 1247,
+    "url_prefix": null,
+    "webdav_prefix": null,
+    "webdav_port": 80
+  }
+}

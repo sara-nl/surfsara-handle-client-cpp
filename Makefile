@@ -5,26 +5,32 @@ CXXLIBS = -lcurl
 
 all:  test_handle handle
 
-DEP=	include/surfsara/curl.h \
-	include/surfsara/curl_opt.h include/surfsara/handle_client.h \
-	json-parser-cpp/include/surfsara/ast.h \
-	json-parser-cpp/include/surfsara/impl/object.hpp \
-	json-parser-cpp/include/surfsara/impl/array.hpp \
-	json-parser-cpp/include/surfsara/impl/node.hpp \
-	json-parser-cpp/include/surfsara/json_format.h \
-	json-parser-cpp/include/surfsara/impl/json_format.hpp \
-	json-parser-cpp/include/surfsara/json_parser.h \
-	json-parser-cpp/include/surfsara/impl/json_parser.hpp \
-	include/surfsara/handle_validation.h CliArgs/include/cli.h \
-	CliArgs/include/cli_parser.h CliArgs/include/cli_flag.h \
-	CliArgs/include/cli_argument.h CliArgs/include/cli_doc.h \
-	CliArgs/include/cli_multiple_flag.h CliArgs/include/cli_value.h \
-	CliArgs/include/cli_converter.h CliArgs/include/cli_positional_value.h \
-	CliArgs/include/cli_multiple_value.h \
-	CliArgs/include/cli_positional_multiple_value.h
+-include handle.dep
+-include test_handle.dep
+-include test_util.dep
 
-handle: src/handle.cpp ${DEP}
+handle: src/handle.cpp src/handle_operation.h ${DEP}
 	${CXX} ${CXXFLAGS} ${INCLUDE} src/handle.cpp ${CXXLIBS} -o handle
+	${CXX} ${INCLUDE} -MM -MT handle -MF handle.dep src/handle.cpp
 
-test_handle: src/test_handle.cpp
-	${CXX} ${CXXFLAGS} ${INCLUDE} src/test_handle.cpp ${CXXLIBS} -o test_handle
+test_handle: test_handle.o test_util.o src/test_main.cpp
+	${CXX} ${CXXFLAGS} ${INCLUDE} src/test_handle.cpp src/test_util.cpp src/test_main.cpp ${CXXLIBS} -o test_handle
+
+test_handle.o:
+	${CXX} ${CXXFLAGS} ${INCLUDE} -c src/test_handle.cpp -o test_handle.o
+	${CXX} ${INCLUDE} -MM -MT test_handle.o -MF test_handle.dep src/test_handle.cpp
+
+test_util.o:
+	${CXX} ${CXXFLAGS} ${INCLUDE} -c src/test_util.cpp -o test_util.o
+	${CXX} ${INCLUDE} -MM -MT test_util.o -MF test_util.dep src/test_util.cpp
+
+
+clean:
+	rm -f test_util.o
+	rm -f test_handle.o
+	rm -f test_handle
+	rm -f test_util.dep
+	rm -f test_handle.dep
+	rm -f handle.dep
+	rm -f handle
+

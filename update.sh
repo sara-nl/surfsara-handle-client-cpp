@@ -1,16 +1,15 @@
 #!/bin/bash
 
-PID_SERVER=https://epic5.storage.surfsara.nl/api/handles
-PORT=8003
-PREFIX=21.T12995
 VERBOSE=--verbose
 HANDLE=$1
 if [ -z "$HANDLE" ]
 then
-    HANDLE=$( cat default_handle.txt )
+    HANDLE=$( ./get_last_handle.py )
 fi
 
-UPDATE="./handle $VERBOSE --key 308_21.T12995_TRAINING_privkey.pem --cert 308_21.T12995_TRAINING_certificate_only.pem --insecure --port $PORT --url $PID_SERVER update $HANDLE --json "
+set -x
+
+UPDATE="./handle $VERBOSE --config config.json update $HANDLE "
 
 $UPDATE '{"values": [{
                              "index":2,

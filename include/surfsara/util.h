@@ -34,6 +34,8 @@ namespace surfsara
 
     template<typename T>
     inline T fromString(const std::string & str);
+
+    inline std::string joinPath(const std::string & s1, const std::string & s2);
   }
 }
 
@@ -88,5 +90,21 @@ inline T surfsara::util::fromString(const std::string & str)
   return value;
 }
 
-
+inline std::string surfsara::util::joinPath(const std::string & s1, const std::string & s2)
+{
+  std::size_t p = s1.size();
+  while(p > 0 && s1[p-1] == '/')
+  {
+    p--;
+  }
+  std::size_t q = 0;
+  while(q < s2.size() && s2[q] == '/')
+  {
+    q++;
+  }
+  std::string ret(s1.begin(), s1.begin() + p);
+  ret.append("/");
+  ret.insert(ret.end(), s2.begin() + q, s2.end());
+  return ret;
+}
 
