@@ -72,8 +72,11 @@ namespace surfsara
     {
       ost << "http code: " << res.httpCode << " (" << httpCode2string(res.httpCode) << ")" << std::endl
           << "curl code: " << res.curlCode << " (" << curlCode2string(res.curlCode) << ")" << std::endl
-          << "success:   " << res.success << std::endl
-          << "body       " << res.body;
+          << "success:   " << res.success;
+      if(res.success)
+      {
+        ost << std::endl << "body       " << res.body;
+      }
       return ost;
     }
 
