@@ -44,7 +44,7 @@ namespace surfsara
     class Config
     {
     public:
-      Config(const std::vector<std::shared_ptr<Operation>> & op);
+      Config(const std::vector<std::shared_ptr<Operation>> & op={});
 
       inline void parseJson(const std::string & filename, bool verbose=false);
       inline std::shared_ptr<Operation> parseArgs(int argc, const char ** argv);
