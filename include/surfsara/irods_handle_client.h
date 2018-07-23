@@ -55,6 +55,7 @@ namespace surfsara
       inline Result update(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
       inline Result get(const std::string & path);
+      inline std::string lookup(const std::string & path);
 
     private:
       inline std::vector<int> update(IndexAllocator & alloc, surfsara::ast::Node & root, const std::string & path);
@@ -200,6 +201,24 @@ namespace surfsara
       {
         std::string handle(lookupResult[0]);
         return handleClient->get(handle);
+      }
+    }
+
+    inline std::string IRodsHandleClient::lookup(const std::string & path)
+    {
+      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      if(lookupResult.size() == 0)
+      {
+        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+      }
+      else if(lookupResult.size() == 1)
+      {
+        return lookupResult[0];
+      }
+      else
+      {
+        throw ValidationError({std::string("PID for iRods url ") + url + "not unique, found " + std::to_string(lookupResult.size()) + " matching entries"});
       }
     }
 
