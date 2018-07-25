@@ -1,12 +1,12 @@
 [submodule "CliArgs"]
 	path = CliArgs
-	url = git@git.ia.surfsara.nl:data-management-services/stefan-wolfsheimer.CliArgs.git
+	url = ../stefan-wolfsheimer.CliArgs.git
 [submodule "Catch2"]
 	path = Catch2
-	url = git@git.ia.surfsara.nl:data-management-services/catchorg.Catch2.git
+	url = ../catchorg.Catch2.git
 [submodule "handle-mockup"]
 	path = handle-mockup
-	url = git@git.ia.surfsara.nl:data-management-services/handle-mockup.git
+	url = ../handle-mockup.git
 [submodule "json-parser-cpp"]
 	path = json-parser-cpp
-	url = git@git.ia.surfsara.nl:data-management-services/stefan-wolfsheimer.json-parser-cpp.git
+	url = ../stefan-wolfsheimer.json-parser-cpp.git
