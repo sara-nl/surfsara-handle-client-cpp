@@ -1,21 +1,6 @@
 #!/bin/bash
-
-PREFIX=21.T12995
-USER=21.T12995
-PASSWORD=$( cat reverse_lookup_password.txt )
-PORT=8003
-URL=https://epic5.storage.surfsara.nl/hrls/handles
 VERBOSE=--verbose
+PREFIX=21.T12995
 set -x
 
-
-
-./handle --lookup_url $URL \
-         --lookup_port $PORT \
-         --lookup_user $USER \
-         --lookup_password $PASSWORD \
-         --lookup_insecure \
-         ${VERBOSE} \
-         lookup \
-         ${PREFIX} \
-         'URL=*'
+./handle --config config.json --handle_prefix $PREFIX ${VERBOSE} lookup 'URL=*'

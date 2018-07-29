@@ -148,7 +148,7 @@ class HandleLookup : public Operation
 {
 public:
   HandleLookup(): Operation("lookup",
-                                  "lookup <KEY>=<VALUE> <KEY>=<VALUE> ...: find a handle by reverse lookup\n") {}
+                            "lookup <KEY>=<VALUE> <KEY>=<VALUE> ...: find a handle by reverse lookup\n") {}
   virtual int parse(Config & config) override
   {
     int ret = 0;
@@ -172,12 +172,20 @@ public:
                                        std::string(arg.begin() + pos + 1, arg.end())));
       }
     }
-    auto res = reverseLookupClient->lookup(query);
-    for(auto handle : res)
+    try
     {
-      std::cout << handle << std::endl;
+      auto res = reverseLookupClient->lookup(query);
+      for(auto handle : res)
+      {
+        std::cout << handle << std::endl;
+      }
+      return 0;
     }
-    return 0;
+    catch(const std::exception & ex)
+    {
+      std::cerr << ex.what() << std::endl;
+      return 8;
+    }
   }
 };
 

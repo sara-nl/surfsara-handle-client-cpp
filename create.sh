@@ -4,7 +4,7 @@ PREFIX=21.T12995
 VERBOSE=--verbose
 
 set -x
-CREATE_HANDLE="./handle $VERBOSE --output last_handle.json --config config.json create "
+CREATE_HANDLE="./handle $VERBOSE --output last_handle.json --config config.json --handle_prefix $PREFIX create "
 
 $CREATE_HANDLE '{"values": [{
                              "index":1,
