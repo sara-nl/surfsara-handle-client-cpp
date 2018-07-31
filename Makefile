@@ -11,18 +11,18 @@ all:  test_handle handle
 
 handle: src/handle.cpp ${DEP}
 	${CXX} ${CXXFLAGS} ${INCLUDE} src/handle.cpp ${CXXLIBS} -o handle
-	${CXX} ${INCLUDE} -MM -MT handle -MF handle.dep src/handle.cpp
+	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT handle -MF handle.dep src/handle.cpp
 
 test_handle: test_handle.o test_util.o unit_test/test_main.cpp
 	${CXX} ${CXXFLAGS} ${INCLUDE} test_handle.o test_util.o unit_test/test_main.cpp ${CXXLIBS} -o test_handle
 
 test_handle.o:
 	${CXX} ${CXXFLAGS} ${INCLUDE} -c unit_test/test_handle.cpp -o test_handle.o
-	${CXX} ${INCLUDE} -MM -MT test_handle.o -MF test_handle.dep unit_test/test_handle.cpp
+	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT test_handle.o -MF test_handle.dep unit_test/test_handle.cpp
 
 test_util.o:
 	${CXX} ${CXXFLAGS} ${INCLUDE} -c unit_test/test_util.cpp -o test_util.o
-	${CXX} ${INCLUDE} -MM -MT test_util.o -MF test_util.dep unit_test/test_util.cpp
+	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT test_util.o -MF test_util.dep unit_test/test_util.cpp
 
 
 clean:
