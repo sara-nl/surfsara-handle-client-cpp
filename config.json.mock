@@ -3,6 +3,7 @@
     "url": "http://localhost/api/handles",
     "port": 5000,
     "default_prefix": "21.T12995",
+    "prefix": "21.T12995",
     "cert": null,
     "key": null,
     "insecure": null,
