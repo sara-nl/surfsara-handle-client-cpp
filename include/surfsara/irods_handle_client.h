@@ -210,7 +210,7 @@ namespace surfsara
       auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
       if(lookupResult.size() == 0)
       {
-        return std::string("")
+        return std::string("");
       }
       else if(lookupResult.size() == 1)
       {
