@@ -89,15 +89,15 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Update
+// Move
 //
 ////////////////////////////////////////////////////////////////////////////////
-class HandleUpdate : public Operation
+class HandleMove : public Operation
 {
 public:
-  HandleUpdate(): Operation("update",
-                            "update <HANDLE> <JSON>: update PID (only inidices that appear in the JSON doc)\n"
-                            "update --replace <HANDLE> <JSON>: replace PID\n") {}
+  HandleMove(): Operation("move",
+                            "move <HANDLE> <JSON>: move PID (only inidices that appear in the JSON doc)\n"
+                            "move --replace <HANDLE> <JSON>: replace PID\n") {}
   virtual int parse(Config & config) override
   {
     if(config.args->getValue().size() != 2)
@@ -113,7 +113,7 @@ public:
     auto client = config.makeHandleClient();
     surfsara::handle::Result res;
     Node node(surfsara::ast::parseJson(config.args->getValue()[1]));
-    res = client->update(config.args->getValue().front(), node);
+    res = client->move(config.args->getValue().front(), node);
     return finalize(config, res);
   }
 };
@@ -285,19 +285,19 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Update IRods Object
+// Move IRods Object
 //
 ////////////////////////////////////////////////////////////////////////////////
-class HandleUpdateIRodsObject : public Operation
+class HandleMoveIRodsObject : public Operation
 {
 public:
-  HandleUpdateIRodsObject(): Operation("iupdate",
-                                       "iupdate <OLD_PATH> <NEW_PATH>: update PID for irods object\n") {}
+  HandleMoveIRodsObject(): Operation("imove",
+                                       "imove <OLD_PATH> <NEW_PATH>: move PID for irods object\n") {}
   virtual int parse(Config & config) override
   {
     if(config.args->getValue().size() != 2)
     {
-      std::cerr << "exactly two arguments (irods old path / new path) required for update operation" << std::endl;
+      std::cerr << "exactly two arguments (irods old path / new path) required for move operation" << std::endl;
       return 8;
     }
     return 0;
@@ -306,7 +306,7 @@ public:
   virtual int exec(Config & config) override
   {
     auto client = config.makeIRodsHandleClient();
-    auto res = client->update(config.args->getValue()[0], config.args->getValue()[1]);
+    auto res = client->move(config.args->getValue()[0], config.args->getValue()[1]);
     return finalize(config, res);
   }
 };
@@ -414,13 +414,13 @@ int main(int argc, const char ** argv)
   surfsara::handle::Config cfg({
       std::make_shared<HandleCreate>(),
       std::make_shared<HandleGet>(),
-      std::make_shared<HandleUpdate>(),
+      std::make_shared<HandleMove>(),
       std::make_shared<HandleResolve>(),
       std::make_shared<HandleLookup>(),
       std::make_shared<HandleDelete>(),
       std::make_shared<HandleDeletePid>(),
       std::make_shared<HandleCreateIRodsObject>(),
-      std::make_shared<HandleUpdateIRodsObject>(),
+      std::make_shared<HandleMoveIRodsObject>(),
       std::make_shared<HandleDeleteIRodsObject>(),
       std::make_shared<HandleGetIRodsObject>()});
   

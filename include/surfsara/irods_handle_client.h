@@ -52,7 +52,7 @@ namespace surfsara
         reverseLookupClient(_reverseLookupClient) {}
 
       inline Result create(const std::string & path);
-      inline Result update(const std::string & oldPath, const std::string & newPath);
+      inline Result move(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
       inline Result get(const std::string & path);
       inline std::string lookup(const std::string & path);
@@ -141,7 +141,7 @@ namespace surfsara
       }
     }
 
-    inline Result IRodsHandleClient::update(const std::string & oldPath, const std::string & newPath)
+    inline Result IRodsHandleClient::move(const std::string & oldPath, const std::string & newPath)
     {
       std::string url = surfsara::util::joinPath(config.urlPrefix, oldPath);
       auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
@@ -165,7 +165,7 @@ namespace surfsara
               throw ValidationError({std::string("Failed to remove unused keys")});
             }
           }
-          return handleClient->update(handle, obj.data);
+          return handleClient->move(handle, obj.data);
         }
         else
         {
