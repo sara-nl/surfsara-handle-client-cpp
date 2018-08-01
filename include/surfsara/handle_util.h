@@ -47,6 +47,10 @@ namespace surfsara
                                            const std::string & type,
                                            const surfsara::ast::Node & value);
 
+    inline std::string extractValueByType(const surfsara::ast::Node & node,
+                                          const std::string & type);
+
+
   }
 }
 
@@ -208,6 +212,57 @@ namespace surfsara
       return ret;
     }
 
+    inline std::string extractValueByType(const surfsara::ast::Node & node,
+                                          const std::string & type)
+    {
+      using Object = surfsara::ast::Object;
+      using Array = surfsara::ast::Array;
+      using String = surfsara::ast::String;
+      using Integer = surfsara::ast::Integer;
+      using Float = surfsara::ast::Float;
+      auto obj = node.find("values/*/data/value", [type](const Node & root,
+                                                         const std::vector<std::string> & _path)
+                           {
+                             std::vector<std::string> path(_path);
+                             path.pop_back();
+                             path.pop_back();
+                             path.push_back("type");
+                             auto n = root.find(path);
+                             if(n.isA<String>() && n.as<String>() == type)
+                             {
+                               return true;
+                             }
+                             else
+                             {
+                               return false;
+                             }
+                           });
+      if(obj.isA<String>())
+      {
+        return obj.as<String>();
+      }
+      else if(obj.isA<Integer>())
+      {
+        return std::to_string(obj.as<Integer>());
+      }
+      else if(obj.isA<Float>())
+      {
+        return std::to_string(obj.as<Float>());
+      }
+      else if(obj.isA<Integer>())
+      {
+        return std::to_string(obj.as<Integer>());
+      }
+      else if(obj.isA<Object>())
+      {
+        return "[OBJECT]";
+      }
+      else if(obj.isA<Array>())
+      {
+        return "[ARRAY]";
+      }
+    }
+
     inline surfsara::ast::Node updateIndex(IndexAllocator & alloc,
                                            surfsara::ast::Node & root,
                                            const std::string & type,
@@ -259,6 +314,8 @@ namespace surfsara
         return Undefined();
       }
     }
+   
+
 
   } // handle 
 } // surfsara

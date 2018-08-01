@@ -19,7 +19,7 @@ struct HandleClientMock : public I_HandleClient
 {
   std::function<Result(const std::string & prefix, const surfsara::ast::Node & node)> mockCreate;
   std::function<Result(const std::string & handle)> mockGet;
-  std::function<Result(const std::string & handle, const surfsara::ast::Node & node)> mockMove;
+  std::function<Result(const std::string & handle, const surfsara::ast::Node & node)> mockUpdate;
   std::function<Result(const std::string & handle, const std::vector<int> & indices)> mockRemoveIndices;
   std::function<Result(const std::string & handle)> mockRemove;
 
@@ -34,9 +34,9 @@ struct HandleClientMock : public I_HandleClient
     return mockGet(handle);
   }
 
-  virtual Result move(const std::string & handle, const surfsara::ast::Node & node) override
+  virtual Result update(const std::string & handle, const surfsara::ast::Node & node) override
   {
-    return mockMove(handle, node);
+    return mockUpdate(handle, node);
   }
 
   virtual Result removeIndices(const std::string & handle, const std::vector<int> & indices) override
@@ -239,7 +239,7 @@ TEST_CASE("update undefined irods handle throws", "[IRodsHandleClient]" )
   REQUIRE_THROWS(client.move("/path/to/object.txt", "/new/path/to/object.txt"));
 }
 
-TEST_CASE("move irods handle with webdav", "[IRodsHandleClient]" )
+TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
 {
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
@@ -269,11 +269,11 @@ TEST_CASE("move irods handle with webdav", "[IRodsHandleClient]" )
       return res;
     };
 
-  bool moved = false;
+  bool updated = false;
   bool removed = false;
-  handleClient->mockMove = [&moved](const std::string & handle, const surfsara::ast::Node & node)
+  handleClient->mockUpdate = [&updated](const std::string & handle, const surfsara::ast::Node & node)
     {
-      moved = true;
+      updated = true;
       REQUIRE(handle == "prefix-uuid");
       Array arr = node.as<Object>()["values"].as<Array>();
       REQUIRE(arr.size() == 7);
@@ -296,11 +296,11 @@ TEST_CASE("move irods handle with webdav", "[IRodsHandleClient]" )
     };
 
   client.move("/path/to/object.txt", "/new/path/to/object.txt");
-  REQUIRE(moved);
+  REQUIRE(updated);
   REQUIRE_FALSE(removed);
 }
 
-TEST_CASE("move irods handle with webdav removal", "[IRodsHandleClient]" )
+TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
 {
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
@@ -332,11 +332,11 @@ TEST_CASE("move irods handle with webdav removal", "[IRodsHandleClient]" )
       return res;
     };
 
-  bool moved = false;
+  bool updated = false;
   bool removed = false;
-  handleClient->mockMove = [&moved](const std::string & handle, const surfsara::ast::Node & node)
+  handleClient->mockUpdate = [&updated](const std::string & handle, const surfsara::ast::Node & node)
     {
-      moved = true;
+      updated = true;
       REQUIRE(handle == "prefix-uuid");
       Array arr = node.as<Object>()["values"].as<Array>();
       REQUIRE(arr.size() == 5);
@@ -359,7 +359,7 @@ TEST_CASE("move irods handle with webdav removal", "[IRodsHandleClient]" )
       return res;
     };
   client.move("/path/to/object.txt", "/new/path/to/object.txt");
-  REQUIRE(moved);
+  REQUIRE(updated);
   REQUIRE(removed);
 }
 

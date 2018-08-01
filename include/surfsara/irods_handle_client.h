@@ -55,6 +55,11 @@ namespace surfsara
       inline Result move(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
       inline Result get(const std::string & path);
+      inline Result set(const std::string & path,
+                        const std::string & key,
+                        const std::string & value);
+      inline Result unset(const std::string & path,
+                          const std::string & key);
       inline std::string lookup(const std::string & path);
 
     private:
@@ -165,7 +170,7 @@ namespace surfsara
               throw ValidationError({std::string("Failed to remove unused keys")});
             }
           }
-          return handleClient->move(handle, obj.data);
+          return handleClient->update(handle, obj.data);
         }
         else
         {
@@ -201,6 +206,70 @@ namespace surfsara
       {
         std::string handle(lookupResult[0]);
         return handleClient->get(handle);
+      }
+    }
+
+    inline Result IRodsHandleClient::set(const std::string & path,
+                                         const std::string & key,
+                                         const std::string & value)
+    {
+      using Integer = surfsara::ast::Integer;
+      using Undefined = surfsara::ast::Undefined;
+      using String = surfsara::ast::String;
+      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      if(lookupResult.empty())
+      {
+        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+      }
+      else
+      {
+        std::string handle(lookupResult[0]);
+        auto obj = handleClient->get(handle);
+        if(obj.success)
+        {
+          IndexAllocator alloc(getIndices(obj.data));
+          std::vector<int> removeIndices;
+          updateIndex(alloc, obj.data, key, String(value));
+          return handleClient->update(handle, obj.data);
+        }
+        else
+        {
+          throw ValidationError({std::string("Failed to retriev handle / decode ") + lookupResult[0]});
+        }
+      }
+    }
+
+    inline Result IRodsHandleClient::unset(const std::string & path,
+                                           const std::string & key)
+    {
+      using Integer = surfsara::ast::Integer;
+      using Undefined = surfsara::ast::Undefined;
+      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      if(lookupResult.empty())
+      {
+        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+      }
+      else
+      {
+        std::string handle(lookupResult[0]);
+        auto obj = handleClient->get(handle);
+        if(obj.success)
+        {
+          IndexAllocator alloc(getIndices(obj.data));
+          std::vector<int> removeIndices;
+          auto tmp = updateIndex(alloc, obj.data, key, Undefined());
+          if(tmp.isA<Integer>())
+          {
+            removeIndices.push_back(tmp.as<Integer>());
+          }
+          return handleClient->removeIndices(handle, removeIndices);
+        }
+        else
+        {
+          throw ValidationError({std::string("Failed to retriev handle / decode ") + lookupResult[0]});
+        }
       }
     }
 

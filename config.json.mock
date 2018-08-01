@@ -19,10 +19,10 @@
     "page": null
   },
   "irods":{
-    "server": null,
+    "server": "localhost",
     "port": 1247,
-    "url_prefix": null,
-    "webdav_prefix": null,
+    "url_prefix": "irods://localhost",
+    "webdav_prefix": "http://localhost",
     "webdav_port": 80
   }
 }

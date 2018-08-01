@@ -113,7 +113,7 @@ public:
     auto client = config.makeHandleClient();
     surfsara::handle::Result res;
     Node node(surfsara::ast::parseJson(config.args->getValue()[1]));
-    res = client->move(config.args->getValue().front(), node);
+    res = client->update(config.args->getValue().front(), node);
     return finalize(config, res);
   }
 };
@@ -348,12 +348,14 @@ class HandleGetIRodsObject : public Operation
 {
 public:
   HandleGetIRodsObject(): Operation("iget",
-                                    "iget <PATH>: get info for given irods path\n") {}
+                                    "iget <PATH>: get info for given irods path\n"
+                                    "iget <PATH> <JSONPATH>: get key from irods meta dataobject") {}
   virtual int parse(Config & config) override
   {
-    if(config.args->getValue().size() != 1)
+    if(config.args->getValue().size() != 1 &&
+       config.args->getValue().size() != 2)
     {
-      std::cerr << "exactly one argument (irods path) required for get operation" << std::endl;
+      std::cerr << "one or two arguments required: 1. irods path and 2. handle TYPE  (optional)" << std::endl;
       return 8;
     }
     return 0;
@@ -363,6 +365,67 @@ public:
   {
     auto client = config.makeIRodsHandleClient();
     auto res = client->get(config.args->getValue()[0]);
+    if(!res.success)
+    {
+      std::cerr << res << std::endl;
+      return 8;
+    }
+    else if(config.args->getValue().size() == 2)
+    {
+      std::cout << surfsara::handle::extractValueByType(res.data, config.args->getValue()[1]) << std::endl;
+    }
+    else
+    {
+      return finalize(config, res);
+    }
+  }
+};
+
+class HandleSetIRodsMetaData : public Operation
+{
+public:
+  HandleSetIRodsMetaData(): Operation("iset",
+                                      "iset <PATH> <JSONPATH> <VALUE>: set the key for meta data entry") {}
+  virtual int parse(Config & config) override
+  {
+    if(config.args->getValue().size() != 3)
+    {
+      std::cerr << "three arguments required: 1. irods path, 2. handle type, 3. value" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(Config & config) override
+  {
+    auto client = config.makeIRodsHandleClient();
+    auto res = client->set(config.args->getValue()[0],
+                           config.args->getValue()[1],
+                           config.args->getValue()[2]);
+    return finalize(config, res);
+  }
+};
+
+class HandleUnsetIRodsMetaData : public Operation
+{
+public:
+  HandleUnsetIRodsMetaData(): Operation("iunset",
+                                        "iunset <PATH> <JSONPATH>: removes key from meta data entry") {}
+  virtual int parse(Config & config) override
+  {
+    if(config.args->getValue().size() != 2)
+    {
+      std::cerr << "two arguments required: 1. irods path, 2. handle type" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(Config & config) override
+  {
+    auto client = config.makeIRodsHandleClient();
+    auto res = client->unset(config.args->getValue()[0],
+                             config.args->getValue()[1]);
     return finalize(config, res);
   }
 };
@@ -422,7 +485,9 @@ int main(int argc, const char ** argv)
       std::make_shared<HandleCreateIRodsObject>(),
       std::make_shared<HandleMoveIRodsObject>(),
       std::make_shared<HandleDeleteIRodsObject>(),
-      std::make_shared<HandleGetIRodsObject>()});
+      std::make_shared<HandleGetIRodsObject>(),
+      std::make_shared<HandleSetIRodsMetaData>(),
+      std::make_shared<HandleUnsetIRodsMetaData>()});
   
   auto op = cfg.parseArgs(argc, argv);
   if(!op)

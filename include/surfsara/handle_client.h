@@ -28,9 +28,9 @@ namespace surfsara
         return getImpl(handle);
       }
 
-      Result move(const std::string & handle, const surfsara::ast::Node & node) override
+      Result update(const std::string & handle, const surfsara::ast::Node & node) override
       {
-        return moveImpl(handle, node);
+        return updateImpl(handle, node);
       }
 
       Result removeIndices(const std::string & handle, const std::vector<int> & indices) override
@@ -51,7 +51,7 @@ namespace surfsara
     private:
       inline Result createImpl(const std::string & prefix, const surfsara::ast::Node & node);
       inline Result getImpl(const std::string & handle);
-      inline Result moveImpl(const std::string & handle, const surfsara::ast::Node & node);
+      inline Result updateImpl(const std::string & handle, const surfsara::ast::Node & node);
       inline Result removeIndicesImpl(const std::string & handle, const std::vector<int> & indices);
       inline Result removeImpl(const std::string & handle);
       inline static void extractResponse(Result & res, const surfsara::ast::Node & json);
@@ -110,7 +110,8 @@ namespace surfsara
       return curlRequest(optionsCopy);
     }
 
-    inline Result HandleClient::moveImpl(const std::string & handle, const surfsara::ast::Node & node)
+    inline Result HandleClient::updateImpl(const std::string & handle,
+                                           const surfsara::ast::Node & node)
     {
       std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>> optionsCopy(options);
       std::vector<std::pair<std::string, std::string>> options{{"overwrite", "true"}};
