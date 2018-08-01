@@ -261,6 +261,10 @@ namespace surfsara
       {
         return "[ARRAY]";
       }
+      else
+      {
+        return "";
+      }
     }
 
     inline surfsara::ast::Node updateIndex(IndexAllocator & alloc,
