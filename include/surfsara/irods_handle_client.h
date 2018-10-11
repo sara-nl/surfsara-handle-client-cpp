@@ -72,11 +72,16 @@ namespace surfsara
       inline Result move(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
       inline Result get(const std::string & path);
+
+      /**
+       * Update a set of indices of a handle
+       */
       inline Result set(const std::string & path,
-                        const std::string & key,
-                        const std::string & value);
+                        const std::vector<std::pair<std::string, std::string>> & kvpairs);
+
       inline Result unset(const std::string & path,
                           const std::string & key);
+
       inline std::string lookup(const std::string & path);
 
     private:
@@ -227,8 +232,7 @@ namespace surfsara
     }
 
     inline Result IRodsHandleClient::set(const std::string & path,
-                                         const std::string & key,
-                                         const std::string & value)
+                                         const std::vector<std::pair<std::string, std::string>> & kvp)
     {
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
@@ -246,8 +250,10 @@ namespace surfsara
         if(obj.success)
         {
           IndexAllocator alloc(getIndices(obj.data));
-          std::vector<int> removeIndices;
-          updateIndex(alloc, obj.data, key, String(value));
+          for(auto & kv : kvp)
+          {
+            updateIndex(alloc, obj.data, kv.first, String(kv.second));
+          }
           return handleClient->update(handle, obj.data);
         }
         else

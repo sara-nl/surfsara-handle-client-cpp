@@ -32,6 +32,12 @@ using Undefined = surfsara::ast::Undefined;
 
 using namespace surfsara::handle;
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Mocks
+//
+////////////////////////////////////////////////////////////////////////////////
+
 struct HandleClientMock : public I_HandleClient
 {
   std::function<Result(const std::string & prefix, const surfsara::ast::Node & node)> mockCreate;
@@ -76,6 +82,12 @@ struct ReverseLookupClientMock : public I_ReverseLookupClient
     return mockLookup(query);
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// helper functions
+//
+////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE( "validateIndices", "[Handle]" )
 {
@@ -409,4 +421,80 @@ TEST_CASE("remove irods handle", "[IRodsHandleClient]" )
   client.remove("/path/to/object.txt");
   REQUIRE(removed);
 }
+
+TEST_CASE("update irods handle metadata", "[IRodsHandleClient]" )
+{
+  auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
+  auto handleClient = std::make_shared<HandleClientMock>();
+  IRodsHandleClient client(handleClient,
+                           reverseLookup,
+                           IRodsConfig("irods://myserver/",
+                                       "myserver",
+                                       "prefix",
+                                       1247,
+                                       "webdav://myserver",
+                                       80));
+  reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
+    {
+      return std::vector<std::string>({"prefix-uuid"});
+    };
+
+  handleClient->mockGet = [](const std::string & handle)
+    {
+      Result res;
+      res.success = true;
+      res.data = surfsara::ast::parseJson("{\"values\":["
+                                          "{\"index\":1,\"type\":\"IRODS_SERVER\","
+                                          "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}},"
+                                          "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\","
+                                          "\"data\":{\"format\":\"string\",\"value\":1247}},"
+                                          "{\"index\":3,\"type\":\"IRODS_URL\","
+                                          "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}},"
+                                          "{\"index\":4,\"type\":\"URL\","
+                                          "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}},"
+                                          "{\"index\":5,\"type\":\"PORT\","
+                                          "\"data\":{\"format\":\"string\",\"value\":1247}},"
+                                          "{\"index\":6,\"type\":\"OLD_VALUE\","
+                                          "\"data\":{\"format\":\"string\",\"value\":\"old\"}}]}");
+      return res;
+    };
+
+  bool updated = false;
+  bool removed = false;
+  handleClient->mockUpdate = [&updated](const std::string & handle,
+                                        const surfsara::ast::Node & node)
+    {
+      updated = true;
+      REQUIRE(handle == "prefix-uuid");
+      Array arr = node.as<Object>()["values"].as<Array>();
+      REQUIRE(arr.size() == 8);
+      REQUIRE(surfsara::ast::formatJson(arr[5])==
+              "{\"index\":6,\"type\":\"OLD_VALUE\","
+              "\"data\":{\"format\":\"string\",\"value\":\"new\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[6])==
+              "{\"index\":7,\"type\":\"ADDED_VALUE\","
+              "\"data\":{\"format\":\"string\",\"value\":\"add1\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[7])==
+              "{\"index\":8,\"type\":\"ADDED_VALUE2\","
+              "\"data\":{\"format\":\"string\",\"value\":\"add2\"}}");
+      Result res;
+      return res;
+    };
+
+  handleClient->mockRemoveIndices = [&removed](const std::string & handle, const std::vector<int> & indices)
+    {
+      removed = true;
+      Result res;
+      return res;
+    };
+
+  client.set("/path/to/object.txt", 
+             std::vector<std::pair<std::string, std::string>>{
+               {"OLD_VALUE", "new"},
+               {"ADDED_VALUE", "add1"},
+               {"ADDED_VALUE2", "add2"}});
+  REQUIRE(updated);
+  REQUIRE_FALSE(removed);
+}
+
 
