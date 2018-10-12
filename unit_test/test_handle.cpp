@@ -171,14 +171,34 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
     {
       REQUIRE(prefix == "prefix");
       Array arr = node.as<Object>()["values"].as<Array>();
-      REQUIRE(arr.size() == 8);
-      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
-      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":4,\"type\":\"IRODS_WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[5])=="{\"index\":5,\"type\":\"IRODS_WEBDAV_PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
-      REQUIRE(surfsara::ast::formatJson(arr[6])=="{\"index\":6,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[7])=="{\"index\":7,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":80}}");
+      REQUIRE(arr.size() == 10);
+      REQUIRE(surfsara::ast::formatJson(arr[1])==
+              "{\"index\":1,\"type\":\"IRODS_SERVER\","
+              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])==
+              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])==
+              "{\"index\":3,\"type\":\"IRODS_URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])==
+              "{\"index\":4,\"type\":\"IRODS_WEBDAV_URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[5])==
+              "{\"index\":5,\"type\":\"IRODS_WEBDAV_PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":80}}");
+      REQUIRE(surfsara::ast::formatJson(arr[6])==
+              "{\"index\":6,\"type\":\"URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[7])==
+              "{\"index\":7,\"type\":\"PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":80}}");
+      REQUIRE(surfsara::ast::formatJson(arr[8])==
+              "{\"index\":8,\"type\":\"KEY1\","
+              "\"data\":{\"format\":\"string\",\"value\":\"VALUE1\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[9])==
+              "{\"index\":9,\"type\":\"KEY2\","
+              "\"data\":{\"format\":\"string\",\"value\":\"VALUE2\"}}");
       Result res;
       return res;
     };
@@ -187,7 +207,9 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
       return std::vector<std::string>();
     };
 
-  auto res = client.create("/path/to/object.txt");
+  auto res = client.create("/path/to/object.txt",
+                           {{"KEY1", "VALUE1"},
+                            {"KEY2", "VALUE2"}});
 }
 
 TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
@@ -206,12 +228,25 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
       Array arr = node.as<Object>()["values"].as<Array>();
-      REQUIRE(arr.size() == 6);
-      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":1,\"type\":\"IRODS_SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":2,\"type\":\"IRODS_SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
-      REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":3,\"type\":\"IRODS_URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[5])=="{\"index\":5,\"type\":\"PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(arr.size() == 7);
+      REQUIRE(surfsara::ast::formatJson(arr[1])==
+              "{\"index\":1,\"type\":\"IRODS_SERVER\","
+              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])==
+              "{\"index\":2,\"type\":\"IRODS_SERVER_PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])==
+              "{\"index\":3,\"type\":\"IRODS_URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])==
+              "{\"index\":4,\"type\":\"URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[5])==
+              "{\"index\":5,\"type\":\"PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[6])==
+              "{\"index\":6,\"type\":\"DUMMY\","
+              "\"data\":{\"format\":\"string\",\"value\":\"VALUE\"}}");
       Result res;
       return res;
     };
@@ -220,7 +255,7 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
       return std::vector<std::string>();
     };
 
-  auto res = client.create("/path/to/object.txt");
+  auto res = client.create("/path/to/object.txt", {{"DUMMY", "VALUE"}});
 }
 
 TEST_CASE("create duplicate irods handle throws", "[IRodsHandleClient]" )
@@ -246,7 +281,7 @@ TEST_CASE("create duplicate irods handle throws", "[IRodsHandleClient]" )
     {
       return std::vector<std::string>({"dummy-prefix/dummy-suffix"});
     };
-  REQUIRE_THROWS(client.create("/path/to/object.txt"));
+  REQUIRE_THROWS(client.create("/path/to/object.txt", {}));
 }
 
 TEST_CASE("update undefined irods handle throws", "[IRodsHandleClient]" )

@@ -68,7 +68,8 @@ namespace surfsara
         handleClient(_handleClient),
         reverseLookupClient(_reverseLookupClient) {}
 
-      inline Result create(const std::string & path);
+      inline Result create(const std::string & paths,
+                           const std::vector<std::pair<std::string, std::string>> & kvpairs);
       inline Result move(const std::string & oldPath, const std::string & newPath);
       inline Result remove(const std::string & path);
       inline Result get(const std::string & path);
@@ -80,7 +81,7 @@ namespace surfsara
                         const std::vector<std::pair<std::string, std::string>> & kvpairs);
 
       inline Result unset(const std::string & path,
-                          const std::string & key);
+                          const std::vector<std::string> & keys);
 
       inline std::string lookup(const std::string & path);
 
@@ -97,7 +98,9 @@ namespace surfsara
 {
   namespace handle
   {
-    inline std::vector<int> IRodsHandleClient::update(IndexAllocator & alloc, surfsara::ast::Node & root, const std::string & path)
+    inline std::vector<int> IRodsHandleClient::update(IndexAllocator & alloc,
+                                                      surfsara::ast::Node & root,
+                                                      const std::string & path)
     {
       using Node = surfsara::ast::Node;
       using String = surfsara::ast::String;
@@ -138,7 +141,8 @@ namespace surfsara
       return removeIndices;
     }
 
-    inline Result IRodsHandleClient::create(const std::string & path)
+    inline Result IRodsHandleClient::create(const std::string & path,
+                                            const std::vector<std::pair<std::string, std::string>> & kvp)
     {
       using Object = surfsara::ast::Object;
       using Array = surfsara::ast::Array;
@@ -160,6 +164,10 @@ namespace surfsara
                     {"permissions", String("011111110011")}})}})}};
         Node root = Object{{"values", Array({admin})}};
         update(alloc, root, path);
+        for(auto & kv : kvp)
+        {
+          updateIndex(alloc, root, kv.first, String(kv.second));
+        }
         return handleClient->create(config.irodsPrefix, root);
       }
       else
@@ -264,7 +272,7 @@ namespace surfsara
     }
 
     inline Result IRodsHandleClient::unset(const std::string & path,
-                                           const std::string & key)
+                                           const std::vector<std::string> & keys)
     {
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
@@ -282,10 +290,13 @@ namespace surfsara
         {
           IndexAllocator alloc(getIndices(obj.data));
           std::vector<int> removeIndices;
-          auto tmp = updateIndex(alloc, obj.data, key, Undefined());
-          if(tmp.isA<Integer>())
+          for(const auto & key : keys)
           {
-            removeIndices.push_back(tmp.as<Integer>());
+            auto tmp = updateIndex(alloc, obj.data, key, Undefined());
+            if(tmp.isA<Integer>())
+            {
+              removeIndices.push_back(tmp.as<Integer>());
+            }
           }
           return handleClient->removeIndices(handle, removeIndices);
         }

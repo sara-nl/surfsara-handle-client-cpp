@@ -53,6 +53,27 @@ namespace surfsara
         return help;
       }
 
+      std::vector<std::pair<std::string, std::string>>
+      listToPairs(std::vector<std::string>::const_iterator itr,
+                  std::vector<std::string>::const_iterator end)
+      {
+        if((end - itr) % 2)
+        {
+          throw std::logic_error("cannot construct list of pairs from uneven list");
+        }
+        std::vector<std::pair<std::string, std::string>> kvpairs;
+        while(itr != end)
+        {
+          std::pair<std::string, std::string> kvpair;
+          kvpair.first = *itr;
+          ++itr;
+          kvpair.second = *itr;
+          ++itr;
+          kvpairs.push_back(kvpair);
+        }
+        return kvpairs;
+      }
+
     private:
       std::string name;
       std::string help;

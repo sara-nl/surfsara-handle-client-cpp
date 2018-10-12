@@ -284,9 +284,13 @@ public:
                                         "icreate <IRODS_PATH>: create a new PID for irods object\n") {}
   virtual int parse(Config & config) override
   {
-    if(config.args->getValue().size() != 1)
+    if(config.args->getValue().size() < 1 ||
+       (config.args->getValue().size() - 1) % 2 != 0)
     {
-      std::cerr << "exactly one argument (irods path) required for create operation" << std::endl;
+      std::cerr << "at least three arguments required: "
+                << "1. irods path,"
+                << "2. key value,"
+                << "3. value" << std::endl;
       return 8;
     }
     return 0;
@@ -295,7 +299,11 @@ public:
   virtual int exec(Config & config) override
   {
     auto client = config.makeIRodsHandleClient();
-    auto res = client->create(config.args->getValue().front());
+    auto args = config.args->getValue();
+    auto itr = args.begin();
+    std::string path(*itr);
+    ++itr;
+    auto res = client->create(path, listToPairs(itr, args.end()));
     return finalize(config, res);
   }
 };
@@ -423,18 +431,8 @@ public:
     auto args = config.args->getValue();
     auto itr = args.begin();
     std::string path(*itr);
-    std::vector<std::pair<std::string, std::string>> kvpairs;
     ++itr;
-    while(itr != args.end())
-    {
-      std::pair<std::string, std::string> kvpair;
-      kvpair.first = *itr;
-      ++itr;
-      kvpair.second = *itr;
-      ++itr;
-      kvpairs.push_back(kvpair);
-    }
-    auto res = client->set(path, kvpairs);
+    auto res = client->set(path, listToPairs(itr, args.end()));
     return finalize(config, res);
   }
 };
@@ -458,7 +456,7 @@ public:
   {
     auto client = config.makeIRodsHandleClient();
     auto res = client->unset(config.args->getValue()[0],
-                             config.args->getValue()[1]);
+                             {config.args->getValue()[1]});
     return finalize(config, res);
   }
 };
