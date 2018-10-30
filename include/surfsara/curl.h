@@ -117,6 +117,7 @@ namespace surfsara
     {
       auto result = static_cast<std::string*>(userdata);
       result->append(ptr, ptr + nmemb);
+      return nmemb;
     }
   }  // curl
 } // surfsara
