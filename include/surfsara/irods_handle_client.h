@@ -56,6 +56,20 @@ namespace surfsara
         port(_port),
         webDavPrefix(_webDavPrefix),
         webDavPort(_webDavPort) {}
+
+      std::string getUrl(const std::string & path) const
+      {
+        std::string ret(urlPrefix);
+        replace(ret, "{PORT}", std::to_string(port));
+        return surfsara::util::joinPath(ret, path);
+      }
+
+      std::string getWebDavUrl(const std::string & path) const
+      {
+        std::string ret(webDavPrefix);
+        replace(ret, "{PORT}", std::to_string(webDavPort));
+        return surfsara::util::joinPath(ret, path);
+      }
     };
 
     class IRodsHandleClient
@@ -106,37 +120,27 @@ namespace surfsara
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
+      std::string url = config.getUrl(path);
       std::vector<int> removeIndices;
-      updateIndex(alloc, root, "IRODS_SERVER", String(config.server));
-      updateIndex(alloc, root, "IRODS_SERVER_PORT", Integer(config.port));
-      updateIndex(alloc, root, "IRODS_URL", String(url));
+      updateIndex(alloc, root, "IRODS/SERVER", String(config.server));
+      updateIndex(alloc, root, "IRODS/SERVER_PORT", Integer(config.port));
+      updateIndex(alloc, root, "IRODS/URL", String(url));
       if(config.webDavPrefix.empty())
       {
         {
-          auto tmp = updateIndex(alloc, root, "IRODS_WEBDAV_URL", Undefined());
-          if(tmp.isA<Integer>())
-          {
-            removeIndices.push_back(tmp.as<Integer>());
-          }
-        }
-        {
-          auto tmp = updateIndex(alloc, root, "IRODS_WEBDAV_PORT", Undefined());
+          auto tmp = updateIndex(alloc, root, "IRODS/WEBDAV_URL", Undefined());
           if(tmp.isA<Integer>())
           {
             removeIndices.push_back(tmp.as<Integer>());
           }
         }
         updateIndex(alloc, root, "URL", String(url));
-        updateIndex(alloc, root, "PORT", Integer(config.port));
       }
       else
       {
-        std::string webdavUrl = surfsara::util::joinPath(config.webDavPrefix, path);
-        updateIndex(alloc, root, "IRODS_WEBDAV_URL", String(webdavUrl));
-        updateIndex(alloc, root, "IRODS_WEBDAV_PORT", Integer(config.webDavPort));
+        std::string webdavUrl = config.getWebDavUrl(path);
+        updateIndex(alloc, root, "IRODS/WEBDAV_URL", String(webdavUrl));
         updateIndex(alloc, root, "URL", String(webdavUrl));
-        updateIndex(alloc, root, "PORT", Integer(config.webDavPort));
       }
       return removeIndices;
     }
@@ -148,8 +152,8 @@ namespace surfsara
       using Array = surfsara::ast::Array;
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         IndexAllocator alloc;
@@ -178,8 +182,8 @@ namespace surfsara
 
     inline Result IRodsHandleClient::move(const std::string & oldPath, const std::string & newPath)
     {
-      std::string url = surfsara::util::joinPath(config.urlPrefix, oldPath);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(oldPath);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
@@ -211,8 +215,8 @@ namespace surfsara
 
     inline Result IRodsHandleClient::remove(const std::string & path)
     {
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
@@ -226,8 +230,8 @@ namespace surfsara
 
     inline Result IRodsHandleClient::get(const std::string & path)
     {
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
@@ -245,8 +249,8 @@ namespace surfsara
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
       using String = surfsara::ast::String;
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
@@ -276,8 +280,8 @@ namespace surfsara
     {
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
         throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
@@ -309,8 +313,8 @@ namespace surfsara
 
     inline std::string IRodsHandleClient::lookup(const std::string & path)
     {
-      std::string url = surfsara::util::joinPath(config.urlPrefix, path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS_URL", url}});
+      std::string url = config.getUrl(path);
+      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.size() == 0)
       {
         return std::string("");
@@ -324,6 +328,5 @@ namespace surfsara
         throw ValidationError({std::string("PID for iRods url ") + url + "not unique, found " + std::to_string(lookupResult.size()) + " matching entries"});
       }
     }
-
   }
 }

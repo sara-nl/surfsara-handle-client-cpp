@@ -39,9 +39,10 @@ namespace surfsara
     struct IndexAllocator
     {
       IndexAllocator(const std::vector<int> & used = {},
-                     int _minI = 1,
+                     int _minI = 2,
                      int _maxI = 100);
       inline surfsara::ast::Integer operator()();
+      inline surfsara::ast::Integer operator()(const std::string & key);
     private:
       std::set<int> used;
       std::set<int>::const_iterator itr;
@@ -66,8 +67,7 @@ namespace surfsara
 
     inline std::string extractValueByType(const surfsara::ast::Node & node,
                                           const std::string & type);
-
-
+    inline void replace(std::string & str, const std::string & find, const std::string & substr);
   }
 }
 
@@ -96,8 +96,10 @@ namespace surfsara
         }
       }
       used.insert(_maxI);
-      itr = used.begin();
-      next = _minI - 1;
+      used.insert(_minI - 1);
+      itr = used.find(_minI - 1);
+      ++itr;
+      next = _minI;
       maxI = _maxI;
     }
 
@@ -105,16 +107,31 @@ namespace surfsara
     {
       // |
       // 1,2,3
-      while(itr != used.end() && next < maxI)
+      while(itr != used.end())
       {
-        ++next;
-        if(next != *itr)
+        if(next < *itr)
         {
-          return next;
+          return next++;
         }
-        ++itr;
+        else
+        {
+          ++next;
+          ++itr;
+        }
       }
       throw std::out_of_range("cannot allocate a new index in the range [1,100)");
+    }
+
+    inline surfsara::ast::Integer IndexAllocator::operator()(const std::string & key)
+    {
+      if(key == "URL")
+      {
+        return 1;
+      }
+      else
+      {
+        return this->operator()();
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +335,7 @@ namespace surfsara
         auto node = getIndexByType(root, type);
         if(node == Undefined())
         {
-          root.update("values/#", Node(Object{{"index", alloc()},
+          root.update("values/#", Node(Object{{"index", alloc(type)},
                                               {"type", String(type)},
                                               {"data", Object{{"format", "string"}, {"value", value}}}}));
         }
@@ -335,9 +352,15 @@ namespace surfsara
         return Undefined();
       }
     }
-   
 
-
+    inline void replace(std::string & str, const std::string & find, const std::string & substr)
+    {
+      std::size_t pos = str.find(find);
+      if(pos != std::string::npos)
+      {
+        str.replace(pos, find.size(), substr);
+      }
+    }
   } // handle 
 } // surfsara
 

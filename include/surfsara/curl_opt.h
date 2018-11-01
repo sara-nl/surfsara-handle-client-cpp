@@ -50,6 +50,8 @@ namespace surfsara
     static std::shared_ptr<BasicCurlOpt> Data(const std::string & data);
     static std::shared_ptr<BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers);
     static std::shared_ptr<BasicCurlOpt> Header(const std::vector<std::string> & _headers);
+    static std::shared_ptr<BasicCurlOpt> Session(CURLSH * share);
+    static std::shared_ptr<BasicCurlOpt> CacheSessionId(bool do_cache);
     static std::shared_ptr<BasicCurlOpt> Verbose(bool verbose);
   }
 }
@@ -329,6 +331,24 @@ namespace surfsara
 
     std::shared_ptr<BasicCurlOpt> Verbose(bool verbose) {
       return std::make_shared<details::CurlOpt<long, CURLOPT_VERBOSE>>(verbose ? 1L : 0L);
+    }
+
+    std::shared_ptr<BasicCurlOpt> Session(CURLSH * share)
+    {
+      if(share)
+      {
+        return std::make_shared<details::CurlOpt<CURLSH*, CURLOPT_SHARE>>(share);
+      }
+      else
+      {
+        return std::shared_ptr<details::CurlOpt<CURLSH*, CURLOPT_SHARE>>();
+      }
+    }
+
+    static std::shared_ptr<BasicCurlOpt> CacheSessionId(bool do_cache)
+    {
+      long value = (do_cache ? 1L : 0L);
+      return std::make_shared<details::CurlOpt<long, CURLOPT_SSL_SESSIONID_CACHE>>(value);
     }
   }
 }

@@ -78,8 +78,12 @@ namespace surfsara
       optSetter(options.begin(), options.end())
     {
       curl = curl_easy_init();
-      for(auto setter : optSetter) {
-        setter->set(curl);
+      for(auto setter : optSetter)
+      {
+        if(setter)
+        {
+          setter->set(curl);
+        }
       }
     }
 
@@ -87,8 +91,12 @@ namespace surfsara
       optSetter(options)
     {
       curl = curl_easy_init();
-      for(auto setter : optSetter) {
-        setter->set(curl);
+      for(auto setter : optSetter)
+      {
+        if(setter)
+        {
+          setter->set(curl);
+        }
       }
     }
 
