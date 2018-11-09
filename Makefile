@@ -17,9 +17,9 @@ handle: src/handle.cpp ${DEP}
 test_handle: test_handle.o test_util.o unit_test/test_main.cpp
 	${CXX} ${CXXFLAGS} ${INCLUDE} test_handle.o test_util.o unit_test/test_main.cpp ${CXXLIBS} -o test_handle
 
-test_curl: functional_test/test_curl.cpp
-	${CXX} ${CXXFLAGS} ${INCLUDE} functional_test/test_curl.cpp ${CXXLIBS} -o test_curl
-	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT test_handle.o -MF test_curl.dep functional_test/test_curl.cpp
+# test_curl: functional_test/test_curl.cpp
+#	${CXX} ${CXXFLAGS} ${INCLUDE} functional_test/test_curl.cpp ${CXXLIBS} -o test_curl
+#	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT test_handle.o -MF test_curl.dep functional_test/test_curl.cpp
 
 test_handle.o:
 	${CXX} ${CXXFLAGS} ${INCLUDE} -c unit_test/test_handle.cpp -o test_handle.o
