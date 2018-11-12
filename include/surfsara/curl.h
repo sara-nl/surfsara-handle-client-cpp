@@ -78,6 +78,10 @@ namespace surfsara
       optSetter(options.begin(), options.end())
     {
       curl = curl_easy_init();
+      if(!curl)
+      {
+        throw std::runtime_error("could not initiate curl");
+      }
       for(auto setter : optSetter)
       {
         if(setter)
@@ -91,6 +95,11 @@ namespace surfsara
       optSetter(options)
     {
       curl = curl_easy_init();
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      if(!curl)
+      {
+        throw std::runtime_error("could not initiate curl");
+      }
       for(auto setter : optSetter)
       {
         if(setter)

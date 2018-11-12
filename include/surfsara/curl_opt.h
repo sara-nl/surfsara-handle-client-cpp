@@ -78,7 +78,9 @@ namespace surfsara
       template<typename T>
       struct OptConverter
       {
-        static T convert(const T & value) { return value; }
+        static T convert(const T & value) {
+          return value;
+        }
       };
 
       template<>
@@ -100,7 +102,7 @@ namespace surfsara
       public:
         CurlOpt(const T & _value) : value(_value) {}
         CURLcode set(CURL *curl) const override {
-          curl_easy_setopt(curl, OPTION, CONV::convert(value));
+          return curl_easy_setopt(curl, OPTION, CONV::convert(value));
         }
       protected:
         T value;
@@ -143,7 +145,7 @@ namespace surfsara
             }
           }
           std::string tmp = url + query;
-          curl_easy_setopt(curl, CURLOPT_URL, tmp.c_str());
+          return curl_easy_setopt(curl, CURLOPT_URL, tmp.c_str());
         }
       private:
         std::string url;
@@ -218,26 +220,40 @@ namespace surfsara
 
         virtual CURLcode set(CURL *curl) const override
         {
-          curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
-          curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile.c_str());
-          curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "PEM");
-          curl_easy_setopt(curl, CURLOPT_SSLKEY, keyFile.c_str());
+          CURLcode c;
+          CURLcode ret = CURLE_OK;
+          c = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
+          if(c != CURLE_OK) ret = c;
+          c = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile.c_str());
+          if(c != CURLE_OK) ret = c;
+          c = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "PEM");
+          if(c != CURLE_OK) ret = c;
+          if(!keyFile.empty())
+          {
+            c = curl_easy_setopt(curl, CURLOPT_SSLKEY, keyFile.c_str());
+            if(c != CURLE_OK) ret = c;
+          }
           if(!passphrase.empty())
           {
-            curl_easy_setopt(curl, CURLOPT_KEYPASSWD, passphrase.c_str());
+            c = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, passphrase.c_str());
+            if(c != CURLE_OK) ret = c;
           }
           if(insecure)
           {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+            c = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+            if(c != CURLE_OK) ret = c;
           }
           else
           {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            c = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            if(c != CURLE_OK) ret = c;
           }
           if(!caCertFile.empty())
           {
-            curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+            c = curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+            if(c != CURLE_OK) ret = c;
           }
+          return ret;
         }
       private:
         std::string certFile;
@@ -272,7 +288,13 @@ namespace surfsara
           {
             curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
           }
-          curl_easy_setopt(curl, CURLOPT_USERPWD, (user + ":" + password).c_str());
+          std::string tmp = user;
+          if(!password.empty())
+          {
+            tmp.push_back(':');
+            tmp += password;
+          }
+          return curl_easy_setopt(curl, CURLOPT_USERPWD, tmp.c_str());
         }
       private:
         std::string user;
