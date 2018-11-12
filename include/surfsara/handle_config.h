@@ -248,7 +248,6 @@ namespace surfsara
       {
         verbose->setValue(true);
       }
-      updateParameters();
     }
 
     inline std::shared_ptr<Operation> Config::parseArgs(int argc, const char ** argv)
@@ -388,7 +387,7 @@ namespace surfsara
     {
       for(auto arg : parser.getArguments())
       {
-        if(!arg->isA<surfsara::ast::Node>())
+        if(!arg->isA<surfsara::ast::Node>() && arg->isSet())
         {
           std::string name = arg->getName();
           if(!name.empty() && name != "handle_profile")
@@ -414,13 +413,27 @@ namespace surfsara
       using Null = surfsara::ast::Null;
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
+      using Float = surfsara::ast::Float;
       if(!arg || !arg->isA<surfsara::ast::Node>())
       {
         std::transform(name.begin(), name.end(),
                        name.begin(), ::toupper);
-        std::stringstream ost;
-        arg->streamOut(ost);
-        parameters[name] = ost.str();
+        if(node.isA<String>())
+        {
+          parameters[name] = node.as<String>();          
+        }
+        else if(node.isA<Boolean>())
+        {
+          parameters[name] = std::to_string(node.as<Boolean>());
+        }
+        else if(node.isA<Integer>())
+        {
+          parameters[name] = std::to_string(node.as<Integer>());
+        }
+        else if(node.isA<Float>())
+        {
+          parameters[name] = std::to_string(node.as<Float>());
+        }
       }
       if(arg && !arg->isSet() && !node.isA<Null>())
       {

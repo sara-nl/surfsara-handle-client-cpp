@@ -219,6 +219,7 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
                                {"IRODS_SERVER", "myserver"},
+                               {"HANDLE_PREFIX", "HANDLE"},
                                {"IRODS_SERVER_PORT", "1247"}}),
                            /*@todo remove IRodsConfig */
                            IRodsConfig("irods://myserver:{PORT}/",

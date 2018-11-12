@@ -2,4 +2,4 @@
 
 VERBOSE=--verbose
 
-./handle $VERBOSE --config config.json --output last_handle.json icreate /path/to/testfile.txt $@
+./handle $VERBOSE --config config.json --output last_handle.json icreate /path/to/testfile3.txt $@

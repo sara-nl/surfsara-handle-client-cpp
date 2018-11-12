@@ -3,6 +3,7 @@
     "url": "https://epic5.storage.surfsara.nl/api/handles",
     "port": 8003,
     "prefix": "21.T12995",
+    "admin": "0.NA",
     "cert": "308_21.T12995_TRAINING_certificate_only.pem",
     "key": "308_21.T12995_TRAINING_privkey.pem",
     "insecure": true,
@@ -69,7 +70,7 @@
           "type": "IRODS/SERVER_PORT",
           "data": {
             "format": "string",
-            "value": "{IRODS_SERVER_PORT}"
+            "value": "{IRODS_PORT}"
           }
         }
       },
@@ -80,7 +81,7 @@
           "data": {
             "format": "admin",
             "value": {
-              "handle": "0.NA/{PREFIX}",
+              "handle": "{HANDLE_ADMIN}/{HANDLE_PREFIX}",
               "index": 200,
               "permissions": "011111110011"
             }
