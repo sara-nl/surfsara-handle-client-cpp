@@ -199,6 +199,7 @@ namespace surfsara
     {
       using namespace surfsara::ast;
       Result res;
+
       surfsara::curl::Curl curl(optionsCopy);
       res.curlResult = curl.request();
       try

@@ -119,6 +119,7 @@ namespace surfsara
     inline Result IRodsHandleClient::create(const std::string & path,
                                             const std::vector<std::pair<std::string, std::string>> & kvp)
     {
+      //std::cout << surfsara::ast::formatJson(root, true) << std::endl;
       using Object = surfsara::ast::Object;
       using Array = surfsara::ast::Array;
       using String = surfsara::ast::String;
