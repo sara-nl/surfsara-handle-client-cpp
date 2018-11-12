@@ -17,6 +17,7 @@ limitations under the License.
 */
 #include <catch2/catch.hpp>
 #include <surfsara/util.h>
+#include <surfsara/ast.h>
 
 using namespace surfsara::util;
 
@@ -37,3 +38,34 @@ TEST_CASE( "joinPath", "[util]" )
   REQUIRE(joinPath("/abc/def///", "/") == "/abc/def/");
   REQUIRE(joinPath("/abc/def///", "//") == "/abc/def/");
 }
+
+TEST_CASE( "replace", "[util]" )
+{
+  {
+    std::string input("abc def");
+    replace(input, "{PORT}", "_");
+    REQUIRE(input == "abc def");
+  }
+  {
+    std::string input("{PORT} abc def");
+    replace(input, "{PORT}", "_");
+    REQUIRE(input == "_ abc def");
+  }
+  {
+    std::string input("abc{PORT}def");
+    replace(input, "{PORT}", "_");
+    REQUIRE(input == "abc_def");
+  }
+  {
+    std::string input("abc def {PORT}");
+    replace(input, "{PORT}", "_");
+    REQUIRE(input == "abc def _");
+  }
+  {
+    //@todo replace all
+    std::string input("abc{PORT}def{PORT}");
+    replace(input, "{PORT}", "_");
+    REQUIRE(input == "abc_def{PORT}");
+  }
+}
+

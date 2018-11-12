@@ -293,7 +293,7 @@ public:
                 << "3. value" << std::endl;
       return 8;
     }
-    return 0;
+    return 8;
   }
   
   virtual int exec(Config & config) override

@@ -18,6 +18,8 @@ limitations under the License.
 #pragma once
 #include <string>
 #include <iostream>
+#include <functional>
+#include <surfsara/ast.h>
 
 namespace surfsara
 {
@@ -29,6 +31,7 @@ namespace surfsara
     inline T fromString(const std::string & str);
 
     inline std::string joinPath(const std::string & s1, const std::string & s2);
+    inline void replace(std::string & str, const std::string & find, const std::string & substr);
   }
 }
 
@@ -100,4 +103,15 @@ inline std::string surfsara::util::joinPath(const std::string & s1, const std::s
   ret.insert(ret.end(), s2.begin() + q, s2.end());
   return ret;
 }
+
+inline void surfsara::util::replace(std::string & str, const std::string & find, const std::string & substr)
+{
+  std::size_t pos = str.find(find);
+  if(pos != std::string::npos)
+  {
+    str.replace(pos, find.size(), substr);
+  }
+}
+
+
 

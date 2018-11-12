@@ -23,6 +23,7 @@ limitations under the License.
 #include <boost/algorithm/string/join.hpp>
 #include <surfsara/ast.h>
 #include <surfsara/json_format.h>
+#include <surfsara/util.h>
 
 namespace surfsara
 {
@@ -42,7 +43,6 @@ namespace surfsara
                      int _minI = 2,
                      int _maxI = 100);
       inline surfsara::ast::Integer operator()();
-      inline surfsara::ast::Integer operator()(const std::string & key);
     private:
       std::set<int> used;
       std::set<int>::const_iterator itr;
@@ -52,22 +52,25 @@ namespace surfsara
 
 
     inline const surfsara::ast::Array & getIndexArray(const surfsara::ast::Node & node);
-    inline std::vector<int> getIndices(const surfsara::ast::Node & node);
-    inline std::vector<int> getIndices(const surfsara::ast::Array & array);
+    inline std::vector<int> getIndices(const surfsara::ast::Node & node, bool do_strict=true);
+    inline std::vector<int> getIndices(const surfsara::ast::Array & array, bool do_strict=true);
 
     inline surfsara::ast::Node getIndexByType(const surfsara::ast::Node & rootNode,
                                               const std::string & type);
     inline surfsara::ast::Node getIndexByType(const surfsara::ast::Array & array,
                                               const std::string & type);
 
-    inline surfsara::ast::Node updateIndex(IndexAllocator & alloc,
-                                           surfsara::ast::Node & root,
+    inline surfsara::ast::Node updateIndex(surfsara::ast::Node & root,
                                            const std::string & type,
-                                           const surfsara::ast::Node & value);
+                                           const surfsara::ast::Node & value,
+                                           const surfsara::ast::Node & index = surfsara::ast::String("{INDEX}"));
 
     inline std::string extractValueByType(const surfsara::ast::Node & node,
                                           const std::string & type);
-    inline void replace(std::string & str, const std::string & find, const std::string & substr);
+
+    inline void deepReplace(surfsara::ast::Node & node,
+                            const std::map<std::string, std::string> & repl,
+                            IndexAllocator & alloc);
   }
 }
 
@@ -122,18 +125,6 @@ namespace surfsara
       throw std::out_of_range("cannot allocate a new index in the range [1,100)");
     }
 
-    inline surfsara::ast::Integer IndexAllocator::operator()(const std::string & key)
-    {
-      if(key == "URL")
-      {
-        return 1;
-      }
-      else
-      {
-        return this->operator()();
-      }
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     inline const surfsara::ast::Array & getIndexArray(const surfsara::ast::Node & node)
     {
@@ -165,18 +156,18 @@ namespace surfsara
       }
     }
 
-    inline std::vector<int> getIndices(const surfsara::ast::Node & node)
+    inline std::vector<int> getIndices(const surfsara::ast::Node & node, bool do_strict)
     {
-      return getIndices(getIndexArray(node));
+      return getIndices(getIndexArray(node), do_strict);
     }
 
-    inline std::vector<int> getIndices(const surfsara::ast::Array & array)
+    inline std::vector<int> getIndices(const surfsara::ast::Array & array, bool do_strict)
     {
       using Object = surfsara::ast::Object;
       using Integer = surfsara::ast::Integer;
       std::set<int> ret;
       std::vector<std::string> errs;
-      array.forEach([&ret, &errs](const Node & node) {
+      array.forEach([&ret, &errs, do_strict](const Node & node) {
           if(node.isA<Object>())
           {
             if(node.as<Object>().has("index"))
@@ -197,12 +188,18 @@ namespace surfsara
               }
               else
               {
-                errs.push_back(std::string("key 'index' must be an integer."));
+                if(do_strict)
+                {
+                  errs.push_back(std::string("key 'index' must be an integer."));
+                }
               }
             }
             else
             {
-              errs.push_back(std::string("missing key 'index'"));
+              if(do_strict)
+              {
+                errs.push_back(std::string("missing key 'index'"));
+              }
             }
           }
           else
@@ -301,6 +298,61 @@ namespace surfsara
       }
     }
 
+    inline surfsara::ast::Node updateIndex(surfsara::ast::Node & root,
+                                           const std::string & type,
+                                           const surfsara::ast::Node & value,
+                                           const surfsara::ast::Node & _index)
+    {
+      using Undefined = surfsara::ast::Undefined;
+      using Node = surfsara::ast::Node;
+      using String = surfsara::ast::String;
+      using Object = surfsara::ast::Object;
+      using Integer = surfsara::ast::Integer;
+      if(value.isA<Undefined>())
+      {
+        auto n = getIndexByType(root, type);
+        root.remove("values/*",
+                    [&type](const Node & r,
+                            const std::vector<std::string> & path) {
+                      std::vector<std::string> tp(path);
+                      tp.push_back("type");
+                      return (r.find(tp) == String(type));
+                    });
+        if(n.isA<Object>() && n.as<Object>().has("index") && n.as<Object>()["index"].isA<Integer>())
+        {
+          return n.as<Object>()["index"];
+        }
+        else
+        {
+          return Undefined();
+        }
+      }
+      else
+      {
+        auto node = getIndexByType(root, type);
+        if(node == Undefined())
+        {
+          root.update("values/#", Node(Object{{"index", (_index.isA<Undefined>() ? String("{INDEX}") : _index)},
+                                              {"type", String(type)},
+                                              {"data", Object{{"format", "string"}, {"value", value}}}}));
+        }
+        else
+        {
+          root.update("values/*/data/value", value, true, [&type](const Node & root, const std::vector<std::string> & path) {
+              std::vector<std::string> tp(path);
+              tp.pop_back();
+              tp.pop_back();
+              tp.push_back("type");
+              return (root.find(tp) == String(type));
+            });
+        }
+        return Undefined();
+      }
+      return Undefined();
+    }
+
+#if 0
+    /* @todo remove */
     inline surfsara::ast::Node updateIndex(IndexAllocator & alloc,
                                            surfsara::ast::Node & root,
                                            const std::string & type,
@@ -352,13 +404,41 @@ namespace surfsara
         return Undefined();
       }
     }
+#endif
 
-    inline void replace(std::string & str, const std::string & find, const std::string & substr)
+    inline void deepReplace(surfsara::ast::Node & n,
+                            const std::map<std::string, std::string> & repl,
+                            IndexAllocator & alloc)
     {
-      std::size_t pos = str.find(find);
-      if(pos != std::string::npos)
+      using Node = surfsara::ast::Node;
+      using String = surfsara::ast::String;
+      using Array = surfsara::ast::Array;
+      using Object = surfsara::ast::Object;
+      if(n.isA<String>())
       {
-        str.replace(pos, find.size(), substr);
+        if(n.as<String>() == "{INDEX}")
+        {
+          n = alloc();
+        }
+        else
+        {
+          for(auto & kp : repl)
+          {
+            surfsara::util::replace(n.as<String>(), kp.first, kp.second);
+          }
+        }
+      }
+      else if(n.isA<Array>())
+      {
+        n.as<Array>().forEach([&alloc, &repl](Node & n){
+            deepReplace(n, repl, alloc);
+          });
+      }
+      else if(n.isA<Object>())
+      {
+        n.as<Object>().forEach([&alloc, &repl](const std::string & key, Node & n){
+            deepReplace(n, repl, alloc);
+          });
       }
     }
   } // handle 

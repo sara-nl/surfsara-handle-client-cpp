@@ -88,35 +88,6 @@ struct ReverseLookupClientMock : public I_ReverseLookupClient
 // helper functions
 //
 ////////////////////////////////////////////////////////////////////////////////
-TEST_CASE( "replace", "[Handle]" )
-{
-  {
-    std::string input("abc def");
-    replace(input, "{PORT}", "_");
-    REQUIRE(input == "abc def");
-  }
-  {
-    std::string input("{PORT} abc def");
-    replace(input, "{PORT}", "_");
-    REQUIRE(input == "_ abc def");
-  }
-  {
-    std::string input("abc{PORT}def");
-    replace(input, "{PORT}", "_");
-    REQUIRE(input == "abc_def");
-  }
-  {
-    std::string input("abc def {PORT}");
-    replace(input, "{PORT}", "_");
-    REQUIRE(input == "abc def _");
-  }
-  {
-    //@todo replace all
-    std::string input("abc{PORT}def{PORT}");
-    replace(input, "{PORT}", "_");
-    REQUIRE(input == "abc_def{PORT}");
-  }
-}
 
 TEST_CASE( "validateIndices", "[Handle]" )
 {
@@ -179,26 +150,57 @@ TEST_CASE("update", "[Handle]" )
 {
   IndexAllocator alloc({2,4});
   Node root = Object{{"values", Array({})}};
-  updateIndex(alloc, root, "TEST_INDEX", String("value"));
+  updateIndex(root, "TEST_INDEX", String("value"));
+  deepReplace(root, {}, alloc);
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
           "{\"index\":3,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}]}");
-  updateIndex(alloc, root, "TEST_INDEX", String("value2"));
+  updateIndex(root, "TEST_INDEX", String("value2"));
+  deepReplace(root, {}, alloc);
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
           "{\"index\":3,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value2\"}}]}");
-  updateIndex(alloc, root, "TEST_INDEX2", String("value"));
-  updateIndex(alloc, root, "URL", String("url-value"));
+  updateIndex(root, "TEST_INDEX2", String("value"));
+  updateIndex(root, "URL", String("url-value"));
+  deepReplace(root, {}, alloc);
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
           "{\"index\":3,\"type\":\"TEST_INDEX\",\"data\":{\"format\":\"string\",\"value\":\"value2\"}},"
           "{\"index\":5,\"type\":\"TEST_INDEX2\",\"data\":{\"format\":\"string\",\"value\":\"value\"}},"
-          "{\"index\":1,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"url-value\"}}]}");
-  updateIndex(alloc, root, "TEST_INDEX", Undefined());
+          "{\"index\":6,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"url-value\"}}]}");
+  updateIndex(root, "TEST_INDEX", Undefined());
+  deepReplace(root, {}, alloc);
   REQUIRE(surfsara::ast::formatJson(root) ==
           "{\"values\":["
           "{\"index\":5,\"type\":\"TEST_INDEX2\",\"data\":{\"format\":\"string\",\"value\":\"value\"}},"
-          "{\"index\":1,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"url-value\"}}]}");
+          "{\"index\":6,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"url-value\"}}]}");
+}
+
+TEST_CASE("deep update", "[Handle]")
+{
+  using String = surfsara::ast::String;
+  using Object = surfsara::ast::Object;
+  using Node = surfsara::ast::Node;
+  using Pair = surfsara::ast::Pair;
+  using Integer = surfsara::ast::Integer;
+  Node n = Object{
+    Pair{"entry", Object{
+        Pair{"index", "{INDEX}"},
+          Pair{"type", "URL"},
+          Pair{"data", Object{
+              Pair{"format", "string"},
+              Pair{"value",  "webdav://{IRODS_WEBDAV_PREFIX}:{IRODS_WEBDAV_PORT}{OBJECT}"}}}}}};
+
+  IndexAllocator alloc({}, 42, 100);
+  deepReplace(n,
+              {{"{IRODS_WEBDAV_PREFIX}", "PREFIX"},
+                {"{IRODS_WEBDAV_PORT}", "PORT"},
+                {"{OBJECT}", "/obj"}},
+              alloc);
+
+
+  REQUIRE(n.find("entry/data/value").as<String>() == "webdav://PREFIX:PORT/obj");
+  REQUIRE(n.find("entry/index").as<Integer>() == 42);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +215,12 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
+                               {"IRODS_SERVER", "myserver"},
+                               {"IRODS_SERVER_PORT", "1247"}}),
+                           /*@todo remove IRodsConfig */
                            IRodsConfig("irods://myserver:{PORT}/",
                                        "myserver",
                                        "prefix",
@@ -224,21 +232,21 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
       REQUIRE(prefix == "prefix");
       Array arr = node.as<Object>()["values"].as<Array>();
       REQUIRE(arr.size() == 8);
-      REQUIRE(surfsara::ast::formatJson(arr[1])==
-              "{\"index\":2,\"type\":\"IRODS/SERVER\","
-              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[2])==
-              "{\"index\":3,\"type\":\"IRODS/SERVER_PORT\","
-              "\"data\":{\"format\":\"string\",\"value\":1247}}");
-      REQUIRE(surfsara::ast::formatJson(arr[3])==
-              "{\"index\":4,\"type\":\"IRODS/URL\","
-              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[4])==
-              "{\"index\":5,\"type\":\"IRODS/WEBDAV_URL\","
-              "\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[5])==
+      REQUIRE(surfsara::ast::formatJson(arr[0])==
               "{\"index\":1,\"type\":\"URL\","
               "\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])==
+              "{\"index\":2,\"type\":\"IRODS/URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])==
+              "{\"index\":3,\"type\":\"IRODS/WEBDAV_URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])==
+              "{\"index\":4,\"type\":\"IRODS/SERVER\","
+              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])==
+              "{\"index\":5,\"type\":\"IRODS/SERVER_PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":\"1247\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[6])==
               "{\"index\":6,\"type\":\"KEY1\","
               "\"data\":{\"format\":\"string\",\"value\":\"VALUE1\"}}");
@@ -265,6 +273,11 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"},
+                               {"IRODS_SERVER", "myserver"},
+                               {"IRODS_SERVER_PORT", "1247"}}),
+                           /*todo remove Irodsconfig */
                            IRodsConfig("irods://myserver:{PORT}/",
                                        "myserver",
                                        "prefix",
@@ -275,18 +288,18 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
     {
       Array arr = node.as<Object>()["values"].as<Array>();
       REQUIRE(arr.size() == 6);
-      REQUIRE(surfsara::ast::formatJson(arr[1])==
-              "{\"index\":2,\"type\":\"IRODS/SERVER\","
-              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[2])==
-              "{\"index\":3,\"type\":\"IRODS/SERVER_PORT\","
-              "\"data\":{\"format\":\"string\",\"value\":1247}}");
-      REQUIRE(surfsara::ast::formatJson(arr[3])==
-              "{\"index\":4,\"type\":\"IRODS/URL\","
-              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[4])==
+      REQUIRE(surfsara::ast::formatJson(arr[0])==
               "{\"index\":1,\"type\":\"URL\","
               "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])==
+              "{\"index\":2,\"type\":\"IRODS/URL\","
+              "\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[2])==
+              "{\"index\":3,\"type\":\"IRODS/SERVER\","
+              "\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[3])==
+              "{\"index\":4,\"type\":\"IRODS/SERVER_PORT\","
+              "\"data\":{\"format\":\"string\",\"value\":\"1247\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[5])==
               "{\"index\":5,\"type\":\"DUMMY\","
               "\"data\":{\"format\":\"string\",\"value\":\"VALUE\"}}");
@@ -307,6 +320,9 @@ TEST_CASE("create duplicate irods handle throws", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver"}}),
                            IRodsConfig("irods://myserver/",
                                        "myserver",
                                        "prefix",
@@ -333,6 +349,9 @@ TEST_CASE("update undefined irods handle throws", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver/"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver/"}}),
                            IRodsConfig("irods://myserver/",
                                        "myserver",
                                        "prefix",
@@ -352,6 +371,11 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
+                               {"IRODS_SERVER", "myserver"},
+                               {"IRODS_SERVER_PORT", "1247"}}),
                            IRodsConfig("irods://myserver:{PORT}/",
                                        "myserver",
                                        "prefix",
@@ -369,7 +393,7 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
       res.success = true;
       res.data = surfsara::ast::parseJson("{\"values\":["
                                           "{\"index\":1,\"type\":\"IRODS/SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}},"
-                                          "{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}},"
+                                          "{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":\"1247\"}},"
                                           "{\"index\":3,\"type\":\"IRODS/URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}},"
                                           "{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/path/to/object.txt\"}}]}");
       return res;
@@ -384,7 +408,7 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
       Array arr = node.as<Object>()["values"].as<Array>();
       REQUIRE(arr.size() == 5);
       REQUIRE(surfsara::ast::formatJson(arr[0])=="{\"index\":1,\"type\":\"IRODS/SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":\"1247\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":3,\"type\":\"IRODS/URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/new/path/to/object.txt\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/new/path/to/object.txt\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":5,\"type\":\"IRODS/WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/new/path/to/object.txt\"}}");
@@ -410,6 +434,10 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"},
+                               {"IRODS_SERVER", "myserver"},
+                               {"IRODS_SERVER_PORT", "1247"}}),
                            IRodsConfig("irods://myserver:{PORT}/",
                                        "myserver",
                                        "prefix",
@@ -430,7 +458,8 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
                                           "{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}},"
                                           "{\"index\":3,\"type\":\"IRODS/URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver/new/path/to/object.txt\"}},"
                                           "{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/new/path/to/object.txt\"}},"
-                                          "{\"index\":5,\"type\":\"IRODS/WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/new/path/to/object.txt\"}}]}");
+                                          "{\"index\":5,\"type\":\"IRODS/WEBDAV_URL\",\"data\":{\"format\":\"string\",\"value\":\"webdav://myserver:80/new/path/to/object.txt\"}},"
+                                          "{\"index\":6,\"type\":\"CUSTOM\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}]}");
       return res;
     };
 
@@ -441,11 +470,12 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
       updated = true;
       REQUIRE(handle == "prefix-uuid");
       Array arr = node.as<Object>()["values"].as<Array>();
-      REQUIRE(arr.size() == 4);
+      REQUIRE(arr.size() == 5);
       REQUIRE(surfsara::ast::formatJson(arr[0])=="{\"index\":1,\"type\":\"IRODS/SERVER\",\"data\":{\"format\":\"string\",\"value\":\"myserver\"}}");
-      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":1247}}");
+      REQUIRE(surfsara::ast::formatJson(arr[1])=="{\"index\":2,\"type\":\"IRODS/SERVER_PORT\",\"data\":{\"format\":\"string\",\"value\":\"1247\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[2])=="{\"index\":3,\"type\":\"IRODS/URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/new/path/to/object.txt\"}}");
       REQUIRE(surfsara::ast::formatJson(arr[3])=="{\"index\":4,\"type\":\"URL\",\"data\":{\"format\":\"string\",\"value\":\"irods://myserver:1247/new/path/to/object.txt\"}}");
+      REQUIRE(surfsara::ast::formatJson(arr[4])=="{\"index\":6,\"type\":\"CUSTOM\",\"data\":{\"format\":\"string\",\"value\":\"value\"}}");
       Result res;
       res.success = true;
       return res;
@@ -467,10 +497,13 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
 
 TEST_CASE("remove irods handle", "[IRodsHandleClient]" )
 {
+  //std::cout << surfsara::ast::formatJson(node, true) << std::endl;
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"}}),
                            IRodsConfig("irods://myserver/",
                                        "myserver",
                                        "prefix",
@@ -500,6 +533,9 @@ TEST_CASE("update irods handle metadata", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
                            reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver/"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver"}}),
                            IRodsConfig("irods://myserver/",
                                        "myserver",
                                        "prefix",

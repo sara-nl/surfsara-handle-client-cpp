@@ -17,7 +17,9 @@ limitations under the License.
 */
 #pragma once
 #include <memory>
+#include <algorithm>
 #include <string>
+#include <sstream>
 #include <exception>
 #include <fstream>
 #include <streambuf>
@@ -28,6 +30,7 @@ limitations under the License.
 #include <surfsara/handle_client.h>
 #include <surfsara/reverse_lookup_client.h>
 #include <surfsara/irods_handle_client.h>
+#include <surfsara/handle_profile.h>
 
 namespace surfsara
 {
@@ -111,6 +114,9 @@ namespace surfsara
       std::shared_ptr<Cli::Flag>               handle_insecure;
       std::shared_ptr<Cli::Flag>               handle_passphrase;
       std::shared_ptr<Cli::Value<std::string>> handle_prefix;
+      std::shared_ptr<Cli::Value<surfsara::ast::Node>> handle_profile;
+      std::shared_ptr<Cli::Value<long>>                handle_index_from;
+      std::shared_ptr<Cli::Value<long>>                handle_index_to;
 
       // lookup
       std::shared_ptr<Cli::Value<std::string>> lookup_url;
@@ -129,18 +135,28 @@ namespace surfsara
       std::shared_ptr<Cli::Value<long>>        irods_webdav_port;
 
       Cli::Parser parser;
+
+      std::map<std::string, std::string> parameters;
     private:
       std::vector<std::shared_ptr<Operation>> operations;
+      long index_from;
+      long index_to;
+
       template<typename T>
       inline void addOperation();
       inline std::string getOperationsString() const;
       inline std::string getOperationsHelp() const;
 
-      inline void setArgument(std::shared_ptr<Cli::Argument> arg,
+      inline void setArgument(const std::string & group,
+                              const std::string & key,
                               const surfsara::ast::Node & node);
+      inline void updateParameters();
     };
   }
 }
+
+inline std::istream & operator>>(std::istream & ist, surfsara::ast::Node & n);
+inline std::ostream & operator<<(std::ostream & ost, const surfsara::ast::Node & n);
 
 namespace surfsara
 {
@@ -150,6 +166,9 @@ namespace surfsara
       : operations(op),
         parser("CLI tool to perform PID operations")
     {
+      index_from = 2;
+      index_to = 100;
+
       operation = parser.addPositionalValue<std::string>("OPERATION", Cli::Doc(getOperationsString() + "\n" + getOperationsHelp()));
       args                = parser.addPositionalMultipleValue<std::string>("ARGS", Cli::Doc("operation specific arguments"));
       help                = parser.addFlag('h', "help", Cli::Doc("show help"));
@@ -166,7 +185,11 @@ namespace surfsara
       handle_passphrase   = parser.addFlag("handle_passphrase", Cli::Doc("key file requires passphrase, ask for it"));
       handle_insecure     = parser.addFlag("handle_insecure", Cli::Doc("Allow insecure server connections when using SSL"));
       handle_prefix       = parser.addValue<std::string>("handle_prefix", Cli::Doc("Prefix"));
-
+      handle_profile      = parser.addValue<surfsara::ast::Node>("handle_profile", Cli::Doc("Handle profile"));
+      /* @todo better solution for default value */
+      handle_index_from   = parser.addValue<long>(index_from, "handle_index_from", Cli::Doc("Begin of free index range"));
+      handle_index_to     = parser.addValue<long>(index_to, "handle_index_to", Cli::Doc("End of free index range index in range (index_from, index_to]"));
+      
       // reverse lookup arguments
       lookup_url          = parser.addValue<std::string>("lookup_url", Cli::Doc("Url to reverse lookup server "));
       lookup_port         = parser.addValue<long>("lookup_port", Cli::Doc("Port for reverse lookup server"));
@@ -211,7 +234,7 @@ namespace surfsara
             if(subnode.isA<Object>())
             {
               subnode.as<Object>().forEach([this, group](const String & key, const Node & node){
-                  setArgument(parser.getArgument(std::string(group) + std::string("_") + key), node);
+                  setArgument(group, key, node);
               });
             }
           }
@@ -225,6 +248,7 @@ namespace surfsara
       {
         verbose->setValue(true);
       }
+      updateParameters();
     }
 
     inline std::shared_ptr<Operation> Config::parseArgs(int argc, const char ** argv)
@@ -275,6 +299,7 @@ namespace surfsara
         parser.printHelp(std::cerr);
         return selectedOp;
       }
+      updateParameters();
     }
 
 
@@ -312,6 +337,10 @@ namespace surfsara
     {
       return std::make_shared<IRodsHandleClient>(makeHandleClient(),
                                                  makeReverseLookupClient(),
+                                                 std::make_shared<HandleProfile>(handle_profile->getValue(),
+                                                                                 parameters,
+                                                                                 index_from,
+                                                                                 index_to),
                                                  IRodsConfig(
                                                              irods_url_prefix->getValue(),
                                                              irods_server->getValue(),
@@ -355,13 +384,44 @@ namespace surfsara
       return ret;
     }
 
-    inline void Config::setArgument(std::shared_ptr<Cli::Argument> arg,
+    inline void Config::updateParameters()
+    {
+      for(auto arg : parser.getArguments())
+      {
+        if(!arg->isA<surfsara::ast::Node>())
+        {
+          std::string name = arg->getName();
+          if(!name.empty() && name != "handle_profile")
+          {
+            std::transform(name.begin(), name.end(),
+                           name.begin(), ::toupper);
+            std::stringstream ost;
+            arg->streamOut(ost);
+            parameters[name] = ost.str();
+          }
+        }
+      }
+    }
+
+    inline void Config::setArgument(const std::string & group,
+                                    const std::string & key,
                                     const surfsara::ast::Node & node)
     {
+
+      std::string name = std::string(group) + std::string("_") + key;
+      const std::shared_ptr<Cli::Argument> arg = parser.getArgument(name);
       using Boolean = surfsara::ast::Boolean;
       using Null = surfsara::ast::Null;
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
+      if(!arg || !arg->isA<surfsara::ast::Node>())
+      {
+        std::transform(name.begin(), name.end(),
+                       name.begin(), ::toupper);
+        std::stringstream ost;
+        arg->streamOut(ost);
+        parameters[name] = ost.str();
+      }
       if(arg && !arg->isSet() && !node.isA<Null>())
       {
         if(std::dynamic_pointer_cast<Cli::Flag>(arg))
@@ -377,7 +437,7 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
-        else if(std::dynamic_pointer_cast<Cli::Value<std::string>>(arg))
+        else if(arg->isA<std::string>())
         {
           if(node.isA<String>())
           {
@@ -390,7 +450,7 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
-        else if(std::dynamic_pointer_cast<Cli::Value<long>>(arg))
+        else if(arg->isA<long>())
         {
           if(node.isA<Integer>())
           {
@@ -403,8 +463,26 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
+        else if(arg->isA<surfsara::ast::Node>())
+        {
+          std::dynamic_pointer_cast<Cli::Value<surfsara::ast::Node>>(arg)->setValue(node);
+        }
       }
     }
-
   } // handle
 } // surfsara
+
+
+std::istream & operator>>(std::istream & ist, surfsara::ast::Node & n)
+{
+  std::string buff((std::istreambuf_iterator<char>(ist)),
+                   std::istreambuf_iterator<char>());
+  n = surfsara::ast::parseJson(buff);
+  return ist;
+}
+
+std::ostream & operator<<(std::ostream & ost, const surfsara::ast::Node & n)
+{
+  surfsara::ast::formatJson(ost, n, true);
+  return ost;
+}

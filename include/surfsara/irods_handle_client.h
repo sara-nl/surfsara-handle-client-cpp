@@ -20,6 +20,7 @@ limitations under the License.
 #include "i_handle_client.h"
 #include "i_reverse_lookup_client.h"
 #include <surfsara/handle_result.h>
+#include <surfsara/handle_profile.h>
 #include <surfsara/ast.h>
 #include <surfsara/util.h>
 
@@ -60,14 +61,14 @@ namespace surfsara
       std::string getUrl(const std::string & path) const
       {
         std::string ret(urlPrefix);
-        replace(ret, "{PORT}", std::to_string(port));
+        surfsara::util::replace(ret, "{PORT}", std::to_string(port));
         return surfsara::util::joinPath(ret, path);
       }
 
       std::string getWebDavUrl(const std::string & path) const
       {
         std::string ret(webDavPrefix);
-        replace(ret, "{PORT}", std::to_string(webDavPort));
+        surfsara::util::replace(ret, "{PORT}", std::to_string(webDavPort));
         return surfsara::util::joinPath(ret, path);
       }
     };
@@ -77,9 +78,11 @@ namespace surfsara
     public:
       IRodsHandleClient(std::shared_ptr<I_HandleClient> _handleClient,
                         std::shared_ptr<I_ReverseLookupClient> _reverseLookupClient,
+                        std::shared_ptr<HandleProfile> _profile,
                         const IRodsConfig & _config) :
         config(_config),
         handleClient(_handleClient),
+        profile(_profile),
         reverseLookupClient(_reverseLookupClient) {}
 
       inline Result create(const std::string & paths,
@@ -100,10 +103,11 @@ namespace surfsara
       inline std::string lookup(const std::string & path);
 
     private:
-      inline std::vector<int> update(IndexAllocator & alloc, surfsara::ast::Node & root, const std::string & path);
+      // @todo: remove
       IRodsConfig config;
       std::shared_ptr<I_HandleClient> handleClient;
       std::shared_ptr<I_ReverseLookupClient> reverseLookupClient;
+      std::shared_ptr<HandleProfile> profile;
     };
   } // handle
 }
@@ -112,39 +116,6 @@ namespace surfsara
 {
   namespace handle
   {
-    inline std::vector<int> IRodsHandleClient::update(IndexAllocator & alloc,
-                                                      surfsara::ast::Node & root,
-                                                      const std::string & path)
-    {
-      using Node = surfsara::ast::Node;
-      using String = surfsara::ast::String;
-      using Integer = surfsara::ast::Integer;
-      using Undefined = surfsara::ast::Undefined;
-      std::string url = config.getUrl(path);
-      std::vector<int> removeIndices;
-      updateIndex(alloc, root, "IRODS/SERVER", String(config.server));
-      updateIndex(alloc, root, "IRODS/SERVER_PORT", Integer(config.port));
-      updateIndex(alloc, root, "IRODS/URL", String(url));
-      if(config.webDavPrefix.empty())
-      {
-        {
-          auto tmp = updateIndex(alloc, root, "IRODS/WEBDAV_URL", Undefined());
-          if(tmp.isA<Integer>())
-          {
-            removeIndices.push_back(tmp.as<Integer>());
-          }
-        }
-        updateIndex(alloc, root, "URL", String(url));
-      }
-      else
-      {
-        std::string webdavUrl = config.getWebDavUrl(path);
-        updateIndex(alloc, root, "IRODS/WEBDAV_URL", String(webdavUrl));
-        updateIndex(alloc, root, "URL", String(webdavUrl));
-      }
-      return removeIndices;
-    }
-
     inline Result IRodsHandleClient::create(const std::string & path,
                                             const std::vector<std::pair<std::string, std::string>> & kvp)
     {
@@ -153,26 +124,13 @@ namespace surfsara
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
       std::string url = config.getUrl(path);
+      /* @todo remove reverse lookup
+         https://trello.com/c/sHyiwTpd/27-pid-remove-reverse-lookup-from-create-to-improve-performance
+      */
       auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
       if(lookupResult.empty())
       {
-        IndexAllocator alloc;
-        Object admin{
-          {"index", Integer(100)},
-          {"type", String("HS_ADMIN")},
-          {"data", Object({
-              {"format", String("admin")},
-              {"value", Object({
-                    {"handle", String(std::string("0.NA/") + config.irodsPrefix)},
-                    {"index", Integer(200)},
-                    {"permissions", String("011111110011")}})}})}};
-        Node root = Object{{"values", Array({admin})}};
-        update(alloc, root, path);
-        for(auto & kv : kvp)
-        {
-          updateIndex(alloc, root, kv.first, String(kv.second));
-        }
-        return handleClient->create(config.irodsPrefix, root);
+        return handleClient->create(config.irodsPrefix, profile->create({{"{OBJECT}", path}}, kvp));
       }
       else
       {
@@ -194,8 +152,7 @@ namespace surfsara
         auto obj = handleClient->get(handle);
         if(obj.success)
         {
-          IndexAllocator alloc(getIndices(obj.data));
-          auto removedIndices = update(alloc, obj.data, newPath);
+          auto removedIndices = profile->update(obj.data, {{"{OBJECT}", newPath}});
           if(!removedIndices.empty())
           {
             auto res = handleClient->removeIndices(handle, removedIndices);
@@ -261,11 +218,7 @@ namespace surfsara
         auto obj = handleClient->get(handle);
         if(obj.success)
         {
-          IndexAllocator alloc(getIndices(obj.data));
-          for(auto & kv : kvp)
-          {
-            updateIndex(alloc, obj.data, kv.first, String(kv.second));
-          }
+          profile->setIndices(obj.data, kvp);
           return handleClient->update(handle, obj.data);
         }
         else
@@ -292,16 +245,7 @@ namespace surfsara
         auto obj = handleClient->get(handle);
         if(obj.success)
         {
-          IndexAllocator alloc(getIndices(obj.data));
-          std::vector<int> removeIndices;
-          for(const auto & key : keys)
-          {
-            auto tmp = updateIndex(alloc, obj.data, key, Undefined());
-            if(tmp.isA<Integer>())
-            {
-              removeIndices.push_back(tmp.as<Integer>());
-            }
-          }
+          std::vector<int> removeIndices = profile->unsetIndices(obj.data, keys);
           return handleClient->removeIndices(handle, removeIndices);
         }
         else
