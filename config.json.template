@@ -1,4 +1,23 @@
 {
+  "lookup":{
+    "url": "https://epic5.storage.surfsara.nl/hrls/handles",
+    "port": 8003,
+    "user": "21.T12995",
+    "password": "<REVERSE_LOOKUP_PASSWORD>",
+    "insecure": true,
+    "limit": null,
+    "page": null,
+    "before_create": true,
+    "key": "URL",
+    "value": "{IRODS_URL_PREFIX}{OBJECT}"
+  },
+  "irods":{
+    "server": null,
+    "port": 1247,
+    "url_prefix": null,
+    "webdav_prefix": null,
+    "webdav_port": 80
+  },
   "handle":{
     "url": "https://epic5.storage.surfsara.nl/api/handles",
     "port": 8003,
@@ -89,21 +108,5 @@
         }
       }
     ]
-  },
-  "lookup":{
-    "url": "https://epic5.storage.surfsara.nl/hrls/handles",
-    "port": 8003,
-    "user": "21.T12995",
-    "password": "<REVERSE_LOOKUP_PASSWORD>",
-    "insecure": true,
-    "limit": null,
-    "page": null
-  },
-  "irods":{
-    "server": null,
-    "port": 1247,
-    "url_prefix": null,
-    "webdav_prefix": null,
-    "webdav_port": 80
   }
 }

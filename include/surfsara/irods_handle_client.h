@@ -28,62 +28,25 @@ namespace surfsara
 {
   namespace handle
   {
-    struct IRodsConfig
-    {
-      std::string urlPrefix;
-      std::string server;
-      std::string irodsPrefix;
-      long port;
-      std::string webDavPrefix;
-      long webDavPort;
-
-      IRodsConfig() : port(1247), webDavPort(80) {}
-      IRodsConfig(const IRodsConfig & rhs) :
-        urlPrefix(rhs.urlPrefix),
-        server(rhs.server),
-        irodsPrefix(rhs.irodsPrefix),
-        port(rhs.port),
-        webDavPrefix(rhs.webDavPrefix),
-        webDavPort(rhs.webDavPort) {}
-      IRodsConfig(const std::string & _urlPrefix,
-                  const std::string & _server,
-                  const std::string & _irodsPrefix,
-                  long _port,
-                  const std::string & _webDavPrefix,
-                  long _webDavPort) :
-        urlPrefix(_urlPrefix),
-        server(_server),
-        irodsPrefix(_irodsPrefix),
-        port(_port),
-        webDavPrefix(_webDavPrefix),
-        webDavPort(_webDavPort) {}
-
-      std::string getUrl(const std::string & path) const
-      {
-        std::string ret(urlPrefix);
-        surfsara::util::replace(ret, "{PORT}", std::to_string(port));
-        return surfsara::util::joinPath(ret, path);
-      }
-
-      std::string getWebDavUrl(const std::string & path) const
-      {
-        std::string ret(webDavPrefix);
-        surfsara::util::replace(ret, "{PORT}", std::to_string(webDavPort));
-        return surfsara::util::joinPath(ret, path);
-      }
-    };
-
     class IRodsHandleClient
     {
     public:
       IRodsHandleClient(std::shared_ptr<I_HandleClient> _handleClient,
+                        const std::string & _handlePrefix,
                         std::shared_ptr<I_ReverseLookupClient> _reverseLookupClient,
                         std::shared_ptr<HandleProfile> _profile,
-                        const IRodsConfig & _config) :
-        config(_config),
+                        bool _do_lookup_before,
+                        //const IRodsConfig & _config,
+                        const std::string & _lookupKey,
+                        const std::string & _lookupValue) :
         handleClient(_handleClient),
+        handlePrefix(_handlePrefix),
         profile(_profile),
-        reverseLookupClient(_reverseLookupClient) {}
+        reverseLookupClient(_reverseLookupClient),
+        do_lookup_before(_do_lookup_before),
+        lookupKey(_lookupKey),
+        lookupValue(_lookupValue)
+      {}
 
       inline Result create(const std::string & paths,
                            const std::vector<std::pair<std::string, std::string>> & kvpairs);
@@ -103,11 +66,13 @@ namespace surfsara
       inline std::string lookup(const std::string & path);
 
     private:
-      // @todo: remove
-      IRodsConfig config;
       std::shared_ptr<I_HandleClient> handleClient;
+      std::string handlePrefix;
       std::shared_ptr<I_ReverseLookupClient> reverseLookupClient;
       std::shared_ptr<HandleProfile> profile;
+      bool do_lookup_before;
+      std::string lookupKey;
+      std::string lookupValue;
     };
   } // handle
 }
@@ -124,28 +89,27 @@ namespace surfsara
       using Array = surfsara::ast::Array;
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
-      std::string url = config.getUrl(path);
-      /* @todo remove reverse lookup
-         https://trello.com/c/sHyiwTpd/27-pid-remove-reverse-lookup-from-create-to-improve-performance
-      */
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
-      if(lookupResult.empty())
+      std::map<std::string, std::string> object_repl_map{{"{OBJECT}", path}};
+      if(do_lookup_before)
       {
-        return handleClient->create(config.irodsPrefix, profile->create({{"{OBJECT}", path}}, kvp));
+        auto value = profile->expand(lookupValue, object_repl_map);
+        auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
+        if(!lookupResult.empty())
+        {
+          throw ValidationError({std::string("Object with ") + lookupKey + "=" + value + " already exists."});
+        }
       }
-      else
-      {
-        throw ValidationError({std::string("Object with irods URL already exists: ") + url});
-      }
+      return handleClient->create(handlePrefix, profile->create(object_repl_map,
+                                                                kvp));
     }
 
     inline Result IRodsHandleClient::move(const std::string & oldPath, const std::string & newPath)
     {
-      std::string url = config.getUrl(oldPath);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto old_value = profile->expand(lookupValue, {{"{OBJECT}", oldPath}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, old_value}});
       if(lookupResult.empty())
       {
-        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + old_value});
       }
       else
       {
@@ -173,11 +137,11 @@ namespace surfsara
 
     inline Result IRodsHandleClient::remove(const std::string & path)
     {
-      std::string url = config.getUrl(path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
       if(lookupResult.empty())
       {
-        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
       }
       else
       {
@@ -188,11 +152,11 @@ namespace surfsara
 
     inline Result IRodsHandleClient::get(const std::string & path)
     {
-      std::string url = config.getUrl(path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
       if(lookupResult.empty())
       {
-        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
       }
       else
       {
@@ -207,11 +171,11 @@ namespace surfsara
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
       using String = surfsara::ast::String;
-      std::string url = config.getUrl(path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
       if(lookupResult.empty())
       {
-        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
       }
       else
       {
@@ -234,11 +198,11 @@ namespace surfsara
     {
       using Integer = surfsara::ast::Integer;
       using Undefined = surfsara::ast::Undefined;
-      std::string url = config.getUrl(path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
       if(lookupResult.empty())
       {
-        throw ValidationError({std::string("Could not find PID for iRODS url ") + url});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
       }
       else
       {
@@ -258,8 +222,8 @@ namespace surfsara
 
     inline std::string IRodsHandleClient::lookup(const std::string & path)
     {
-      std::string url = config.getUrl(path);
-      auto lookupResult = reverseLookupClient->lookup({{"IRODS/URL", url}});
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
       if(lookupResult.size() == 0)
       {
         return std::string("");
@@ -270,7 +234,7 @@ namespace surfsara
       }
       else
       {
-        throw ValidationError({std::string("PID for iRods url ") + url + "not unique, found " + std::to_string(lookupResult.size()) + " matching entries"});
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value + " not unique, found " + std::to_string(lookupResult.size()) + " matching entries"});
       }
     }
   }

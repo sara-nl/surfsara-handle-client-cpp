@@ -214,6 +214,7 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
@@ -221,13 +222,9 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
                                {"IRODS_SERVER", "myserver"},
                                {"HANDLE_PREFIX", "HANDLE"},
                                {"IRODS_SERVER_PORT", "1247"}}),
-                           /*@todo remove IRodsConfig */
-                           IRodsConfig("irods://myserver:{PORT}/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "webdav://myserver:{PORT}",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
       REQUIRE(prefix == "prefix");
@@ -273,18 +270,16 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_SERVER", "myserver"},
                                {"IRODS_SERVER_PORT", "1247"}}),
-                           /*todo remove Irodsconfig */
-                           IRodsConfig("irods://myserver:{PORT}/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
+
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
       Array arr = node.as<Object>()["values"].as<Array>();
@@ -320,16 +315,14 @@ TEST_CASE("create duplicate irods handle throws", "[IRodsHandleClient]" )
   auto handleClient = std::make_shared<HandleClientMock>();
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver"}}),
-                           IRodsConfig("irods://myserver/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "webdav://myserver",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
   handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
     {
       // must not be called
@@ -349,16 +342,14 @@ TEST_CASE("update undefined irods handle throws", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver/"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver/"}}),
-                           IRodsConfig("irods://myserver/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "webdav://myserver",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
   reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
     {
       return std::vector<std::string>();
@@ -371,18 +362,16 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
                                {"IRODS_SERVER", "myserver"},
                                {"IRODS_SERVER_PORT", "1247"}}),
-                           IRodsConfig("irods://myserver:{PORT}/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "webdav://myserver:{PORT}",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
   reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
     {
       return std::vector<std::string>({"prefix-uuid"});
@@ -434,17 +423,16 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_SERVER", "myserver"},
                                {"IRODS_SERVER_PORT", "1247"}}),
-                           IRodsConfig("irods://myserver:{PORT}/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
+
   reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
     {
       return std::vector<std::string>({"prefix-uuid"});
@@ -502,15 +490,13 @@ TEST_CASE("remove irods handle", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"}}),
-                           IRodsConfig("irods://myserver/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
   bool removed = false;
   handleClient->mockRemove = [&removed](const std::string & handle)
     {
@@ -533,16 +519,15 @@ TEST_CASE("update irods handle metadata", "[IRodsHandleClient]" )
   auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
   auto handleClient = std::make_shared<HandleClientMock>();
   IRodsHandleClient client(handleClient,
+                           "prefix",
                            reverseLookup,
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver/"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver"}}),
-                           IRodsConfig("irods://myserver/",
-                                       "myserver",
-                                       "prefix",
-                                       1247,
-                                       "webdav://myserver",
-                                       80));
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
+
   reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
     {
       return std::vector<std::string>({"prefix-uuid"});

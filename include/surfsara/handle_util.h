@@ -351,61 +351,6 @@ namespace surfsara
       return Undefined();
     }
 
-#if 0
-    /* @todo remove */
-    inline surfsara::ast::Node updateIndex(IndexAllocator & alloc,
-                                           surfsara::ast::Node & root,
-                                           const std::string & type,
-                                           const surfsara::ast::Node & value)
-    {
-      using Undefined = surfsara::ast::Undefined;
-      using Node = surfsara::ast::Node;
-      using String = surfsara::ast::String;
-      using Object = surfsara::ast::Object;
-      using Integer = surfsara::ast::Integer;
-      if(value.isA<Undefined>())
-      {
-        auto n = getIndexByType(root, type);
-        root.remove("values/*",
-                    [&type](const Node & r,
-                            const std::vector<std::string> & path) {
-                      std::vector<std::string> tp(path);
-                      tp.push_back("type");
-                      return (r.find(tp) == String(type));
-                    });
-        if(n.isA<Object>() && n.as<Object>().has("index") && n.as<Object>()["index"].isA<Integer>())
-        {
-          return n.as<Object>()["index"];
-        }
-        else
-        {
-          return Undefined();
-        }
-      }
-      else
-      {
-        auto node = getIndexByType(root, type);
-        if(node == Undefined())
-        {
-          root.update("values/#", Node(Object{{"index", alloc(type)},
-                                              {"type", String(type)},
-                                              {"data", Object{{"format", "string"}, {"value", value}}}}));
-        }
-        else
-        {
-          root.update("values/*/data/value", value, true, [&type](const Node & root, const std::vector<std::string> & path) {
-              std::vector<std::string> tp(path);
-              tp.pop_back();
-              tp.pop_back();
-              tp.push_back("type");
-              return (root.find(tp) == String(type));
-            });
-        }
-        return Undefined();
-      }
-    }
-#endif
-
     inline void deepReplace(surfsara::ast::Node & n,
                             const std::map<std::string, std::string> & repl,
                             IndexAllocator & alloc)

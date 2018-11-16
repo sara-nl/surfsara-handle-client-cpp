@@ -41,7 +41,8 @@ namespace surfsara
                              const std::vector<std::pair<std::string, std::string>> & kvp);
       inline std::vector<int> unsetIndices(surfsara::ast::Node & root,
                                            const std::vector<std::string> & kvp);
-
+      inline std::string expand(const std::string & templ,
+                                const std::map<std::string, std::string> & additional_parameters = {});
     private:
       static inline surfsara::ast::Object createStringIndex(const std::string & key,
                                                             const std::string & value);
@@ -364,6 +365,23 @@ inline std::vector<int> surfsara::handle::HandleProfile::unsetIndices(surfsara::
     }
   }
   return removedIndices;
+}
+
+inline std::string surfsara::handle::HandleProfile::expand(const std::string & templ,
+                                                           const std::map<std::string, std::string> & additional_parameters)
+{
+  std::string ret(templ);
+  for(const auto & kp : parameters)
+  {
+    surfsara::util::replace(ret,
+                            std::string("{") + kp.first + std::string("}"),
+                            kp.second);
+  }
+  for(const auto & kp : additional_parameters)
+  {
+    surfsara::util::replace(ret, kp.first, kp.second);
+  }
+  return ret;
 }
 
 

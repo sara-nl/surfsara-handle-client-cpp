@@ -126,6 +126,10 @@ namespace surfsara
       std::shared_ptr<Cli::Flag>               lookup_insecure;
       std::shared_ptr<Cli::Value<long>>        lookup_limit;
       std::shared_ptr<Cli::Value<long>>        lookup_page;
+      std::shared_ptr<Cli::Flag>               lookup_before_create;
+      std::shared_ptr<Cli::Value<std::string>> lookup_key;
+      std::shared_ptr<Cli::Value<std::string>> lookup_value;
+
 
       // irods arguments
       std::shared_ptr<Cli::Value<std::string>> irods_server;
@@ -174,6 +178,7 @@ namespace surfsara
       help                = parser.addFlag('h', "help", Cli::Doc("show help"));
       output              = parser.addValue<std::string>('o', "output", Cli::Doc("Write resulting JSON document to file"));
       configfile          = parser.addValue<std::string>('c', "config", Cli::Doc("Read configuration from file"));
+      lookup_before_create = parser.addFlag("lookup_before_create", Cli::Doc("Perform lookup query before creating a new handle"));
 
       verbose             = parser.addFlag("verbose", Cli::Doc("verbose outout"));
       // handle server options
@@ -198,6 +203,8 @@ namespace surfsara
       lookup_insecure     = parser.addFlag("lookup_insecure", Cli::Doc("Allow insecure server connections with reverse lookup server when using SSL"));
       lookup_limit        = parser.addValue<long>("lookup_limit", Cli::Doc("Pagination Limit"));
       lookup_page         = parser.addValue<long>("lookup_page", Cli::Doc("Pagination Page"));
+      lookup_key          = parser.addValue<std::string>("lookup_key", Cli::Doc("The key that identifies the object in reverse lookup"));
+      lookup_value         = parser.addValue<std::string>("lookup_value", Cli::Doc("The template of the value that identifies the object in reverse lookup"));
 
       // irods setting
       irods_server        = parser.addValue<std::string>("irods_server", Cli::Doc("FQDN or IP of the ICat server"));
@@ -329,24 +336,21 @@ namespace surfsara
                                                                                 lookup_insecure->isSet())},
                                                    (lookup_limit->isSet() ? lookup_limit->getValue() : 100),
                                                    (lookup_page->isSet() ? lookup_page->getValue() : 0),
-                                                                     verbose->isSet());
+                                                   verbose->isSet());
     }
 
     inline std::shared_ptr<IRodsHandleClient> Config::makeIRodsHandleClient() const
     {
       return std::make_shared<IRodsHandleClient>(makeHandleClient(),
+                                                 handle_prefix->getValue(),
                                                  makeReverseLookupClient(),
                                                  std::make_shared<HandleProfile>(handle_profile->getValue(),
                                                                                  parameters,
                                                                                  index_from,
                                                                                  index_to),
-                                                 IRodsConfig(
-                                                             irods_url_prefix->getValue(),
-                                                             irods_server->getValue(),
-                                                             handle_prefix->getValue(),
-                                                             irods_port->getValue(),
-                                                             irods_webdav_prefix->getValue(),
-                                                             irods_webdav_port->getValue()));
+                                                 lookup_before_create->isSet(),
+                                                 lookup_key->getValue(),
+                                                 lookup_value->getValue());
     }
 
     template<typename T>
