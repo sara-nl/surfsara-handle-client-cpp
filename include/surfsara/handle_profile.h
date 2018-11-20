@@ -248,13 +248,20 @@ inline surfsara::ast::Node surfsara::handle::HandleProfile::create(const std::ma
   {
     params[std::string("{") + kv.first + "}"] = kv.second;
   }
-  profile.as<Array>().forEach([this, &result](const Node & n){
-      auto obj = expandIndexObject(n);
-      if(!obj.empty())
-      {
-        result.pushBack(obj);
-      }
-    });
+  if(profile.isA<Array>())
+  {
+    profile.as<Array>().forEach([this, &result](const Node & n){
+        auto obj = expandIndexObject(n);
+        if(!obj.empty())
+        {
+          result.pushBack(obj);
+        }
+      });
+  }
+  else
+  {
+    throw std::logic_error(std::string("Profile is not an array: ") + ast::formatJson(profile, true));
+  }
   auto root = Node(Object{Pair{"values", result}});
   for(auto & kv : kvp)
   {

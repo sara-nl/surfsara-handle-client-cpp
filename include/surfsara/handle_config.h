@@ -341,13 +341,24 @@ namespace surfsara
 
     inline std::shared_ptr<IRodsHandleClient> Config::makeIRodsHandleClient() const
     {
+      using Null = surfsara::ast::Null;
+      std::shared_ptr<HandleProfile> profile;
+      auto node = handle_profile->getValue();
+      if(node.isA<Null>())
+      {
+        profile = std::make_shared<HandleProfile>(parameters);
+      }
+      else
+      {
+        profile = std::make_shared<HandleProfile>(handle_profile->getValue(),
+                                                  parameters,
+                                                  index_from,
+                                                  index_to);
+      }
       return std::make_shared<IRodsHandleClient>(makeHandleClient(),
                                                  handle_prefix->getValue(),
                                                  makeReverseLookupClient(),
-                                                 std::make_shared<HandleProfile>(handle_profile->getValue(),
-                                                                                 parameters,
-                                                                                 index_from,
-                                                                                 index_to),
+                                                 profile,
                                                  lookup_before_create->isSet(),
                                                  lookup_key->getValue(),
                                                  lookup_value->getValue());

@@ -11,6 +11,8 @@
   },
   "lookup":{
     "url": "http://localhost/hrls/handles",
+    "key": "IRODS/URL",
+    "value": "{IRODS_URL_PREFIX}{OBJECT}",
     "port": 5000,
     "user": "21.T12995",
     "password": null,
