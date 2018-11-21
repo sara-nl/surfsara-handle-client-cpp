@@ -32,8 +32,17 @@ limitations under the License.
 #include <surfsara/irods_handle_client.h>
 #include <surfsara/handle_profile.h>
 
+
 namespace surfsara
 {
+#if defined(__clang__)
+  namespace ast
+  {
+    std::istream & operator>>(std::istream & ist, Node & n);
+    std::ostream & operator<<(std::ostream & ost, Node & n);
+  }
+#endif
+
   namespace handle
   {
     class Config;
