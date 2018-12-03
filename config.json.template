@@ -1,13 +1,4 @@
 {
-  "handle":{
-    "url": "https://epic5.storage.surfsara.nl/api/handles",
-    "port": 8003,
-    "prefix": "21.T12995",
-    "cert": "308_21.T12995_TRAINING_certificate_only.pem",
-    "key": "308_21.T12995_TRAINING_privkey.pem",
-    "insecure": true,
-    "passphrase": null
-  },
   "lookup":{
     "url": "https://epic5.storage.surfsara.nl/hrls/handles",
     "port": 8003,
@@ -15,7 +6,10 @@
     "password": "<REVERSE_LOOKUP_PASSWORD>",
     "insecure": true,
     "limit": null,
-    "page": null
+    "page": null,
+    "before_create": true,
+    "key": "URL",
+    "value": "{IRODS_URL_PREFIX}{OBJECT}"
   },
   "irods":{
     "server": null,
@@ -23,5 +17,96 @@
     "url_prefix": null,
     "webdav_prefix": null,
     "webdav_port": 80
+  },
+  "handle":{
+    "url": "https://epic5.storage.surfsara.nl/api/handles",
+    "port": 8003,
+    "prefix": "21.T12995",
+    "admin": "0.NA",
+    "cert": "308_21.T12995_TRAINING_certificate_only.pem",
+    "key": "308_21.T12995_TRAINING_privkey.pem",
+    "insecure": true,
+    "passphrase": null,
+    "index_from": 2,
+    "index_to": 100,
+    "profile": [
+      {
+        "if_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": 1,
+          "type": "URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "if_not_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": 1,
+          "type": "URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_URL_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_URL_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "if_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/WEBDAV_URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/SERVER",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_SERVER}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/SERVER_PORT",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_PORT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": 100,
+          "type": "HS_ADMIN",
+          "data": {
+            "format": "admin",
+            "value": {
+              "handle": "{HANDLE_ADMIN}/{HANDLE_PREFIX}",
+              "index": 200,
+              "permissions": "011111110011"
+            }
+          }
+        }
+      }
+    ]
   }
 }

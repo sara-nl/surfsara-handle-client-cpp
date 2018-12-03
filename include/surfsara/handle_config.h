@@ -17,7 +17,9 @@ limitations under the License.
 */
 #pragma once
 #include <memory>
+#include <algorithm>
 #include <string>
+#include <sstream>
 #include <exception>
 #include <fstream>
 #include <streambuf>
@@ -28,9 +30,19 @@ limitations under the License.
 #include <surfsara/handle_client.h>
 #include <surfsara/reverse_lookup_client.h>
 #include <surfsara/irods_handle_client.h>
+#include <surfsara/handle_profile.h>
+
 
 namespace surfsara
 {
+#if defined(__clang__)
+  namespace ast
+  {
+    std::istream & operator>>(std::istream & ist, Node & n);
+    std::ostream & operator<<(std::ostream & ost, Node & n);
+  }
+#endif
+
   namespace handle
   {
     class Config;
@@ -111,6 +123,9 @@ namespace surfsara
       std::shared_ptr<Cli::Flag>               handle_insecure;
       std::shared_ptr<Cli::Flag>               handle_passphrase;
       std::shared_ptr<Cli::Value<std::string>> handle_prefix;
+      std::shared_ptr<Cli::Value<surfsara::ast::Node>> handle_profile;
+      std::shared_ptr<Cli::Value<long>>                handle_index_from;
+      std::shared_ptr<Cli::Value<long>>                handle_index_to;
 
       // lookup
       std::shared_ptr<Cli::Value<std::string>> lookup_url;
@@ -120,6 +135,10 @@ namespace surfsara
       std::shared_ptr<Cli::Flag>               lookup_insecure;
       std::shared_ptr<Cli::Value<long>>        lookup_limit;
       std::shared_ptr<Cli::Value<long>>        lookup_page;
+      std::shared_ptr<Cli::Flag>               lookup_before_create;
+      std::shared_ptr<Cli::Value<std::string>> lookup_key;
+      std::shared_ptr<Cli::Value<std::string>> lookup_value;
+
 
       // irods arguments
       std::shared_ptr<Cli::Value<std::string>> irods_server;
@@ -129,18 +148,28 @@ namespace surfsara
       std::shared_ptr<Cli::Value<long>>        irods_webdav_port;
 
       Cli::Parser parser;
+
+      std::map<std::string, std::string> parameters;
     private:
       std::vector<std::shared_ptr<Operation>> operations;
+      long index_from;
+      long index_to;
+
       template<typename T>
       inline void addOperation();
       inline std::string getOperationsString() const;
       inline std::string getOperationsHelp() const;
 
-      inline void setArgument(std::shared_ptr<Cli::Argument> arg,
+      inline void setArgument(const std::string & group,
+                              const std::string & key,
                               const surfsara::ast::Node & node);
+      inline void updateParameters();
     };
   }
 }
+
+inline std::istream & operator>>(std::istream & ist, surfsara::ast::Node & n);
+inline std::ostream & operator<<(std::ostream & ost, const surfsara::ast::Node & n);
 
 namespace surfsara
 {
@@ -150,11 +179,15 @@ namespace surfsara
       : operations(op),
         parser("CLI tool to perform PID operations")
     {
+      index_from = 2;
+      index_to = 100;
+
       operation = parser.addPositionalValue<std::string>("OPERATION", Cli::Doc(getOperationsString() + "\n" + getOperationsHelp()));
       args                = parser.addPositionalMultipleValue<std::string>("ARGS", Cli::Doc("operation specific arguments"));
       help                = parser.addFlag('h', "help", Cli::Doc("show help"));
       output              = parser.addValue<std::string>('o', "output", Cli::Doc("Write resulting JSON document to file"));
       configfile          = parser.addValue<std::string>('c', "config", Cli::Doc("Read configuration from file"));
+      lookup_before_create = parser.addFlag("lookup_before_create", Cli::Doc("Perform lookup query before creating a new handle"));
 
       verbose             = parser.addFlag("verbose", Cli::Doc("verbose outout"));
       // handle server options
@@ -166,7 +199,11 @@ namespace surfsara
       handle_passphrase   = parser.addFlag("handle_passphrase", Cli::Doc("key file requires passphrase, ask for it"));
       handle_insecure     = parser.addFlag("handle_insecure", Cli::Doc("Allow insecure server connections when using SSL"));
       handle_prefix       = parser.addValue<std::string>("handle_prefix", Cli::Doc("Prefix"));
-
+      handle_profile      = parser.addValue<surfsara::ast::Node>("handle_profile", Cli::Doc("Handle profile"));
+      /* @todo better solution for default value */
+      handle_index_from   = parser.addValue<long>(index_from, "handle_index_from", Cli::Doc("Begin of free index range"));
+      handle_index_to     = parser.addValue<long>(index_to, "handle_index_to", Cli::Doc("End of free index range index in range (index_from, index_to]"));
+      
       // reverse lookup arguments
       lookup_url          = parser.addValue<std::string>("lookup_url", Cli::Doc("Url to reverse lookup server "));
       lookup_port         = parser.addValue<long>("lookup_port", Cli::Doc("Port for reverse lookup server"));
@@ -175,6 +212,8 @@ namespace surfsara
       lookup_insecure     = parser.addFlag("lookup_insecure", Cli::Doc("Allow insecure server connections with reverse lookup server when using SSL"));
       lookup_limit        = parser.addValue<long>("lookup_limit", Cli::Doc("Pagination Limit"));
       lookup_page         = parser.addValue<long>("lookup_page", Cli::Doc("Pagination Page"));
+      lookup_key          = parser.addValue<std::string>("lookup_key", Cli::Doc("The key that identifies the object in reverse lookup"));
+      lookup_value         = parser.addValue<std::string>("lookup_value", Cli::Doc("The template of the value that identifies the object in reverse lookup"));
 
       // irods setting
       irods_server        = parser.addValue<std::string>("irods_server", Cli::Doc("FQDN or IP of the ICat server"));
@@ -211,7 +250,7 @@ namespace surfsara
             if(subnode.isA<Object>())
             {
               subnode.as<Object>().forEach([this, group](const String & key, const Node & node){
-                  setArgument(parser.getArgument(std::string(group) + std::string("_") + key), node);
+                  setArgument(group, key, node);
               });
             }
           }
@@ -275,6 +314,7 @@ namespace surfsara
         parser.printHelp(std::cerr);
         return selectedOp;
       }
+      updateParameters();
     }
 
 
@@ -305,20 +345,32 @@ namespace surfsara
                                                                                 lookup_insecure->isSet())},
                                                    (lookup_limit->isSet() ? lookup_limit->getValue() : 100),
                                                    (lookup_page->isSet() ? lookup_page->getValue() : 0),
-                                                                     verbose->isSet());
+                                                   verbose->isSet());
     }
 
     inline std::shared_ptr<IRodsHandleClient> Config::makeIRodsHandleClient() const
     {
+      using Null = surfsara::ast::Null;
+      std::shared_ptr<HandleProfile> profile;
+      auto node = handle_profile->getValue();
+      if(node.isA<Null>())
+      {
+        profile = std::make_shared<HandleProfile>(parameters);
+      }
+      else
+      {
+        profile = std::make_shared<HandleProfile>(handle_profile->getValue(),
+                                                  parameters,
+                                                  index_from,
+                                                  index_to);
+      }
       return std::make_shared<IRodsHandleClient>(makeHandleClient(),
+                                                 handle_prefix->getValue(),
                                                  makeReverseLookupClient(),
-                                                 IRodsConfig(
-                                                             irods_url_prefix->getValue(),
-                                                             irods_server->getValue(),
-                                                             handle_prefix->getValue(),
-                                                             irods_port->getValue(),
-                                                             irods_webdav_prefix->getValue(),
-                                                             irods_webdav_port->getValue()));
+                                                 profile,
+                                                 lookup_before_create->isSet(),
+                                                 lookup_key->getValue(),
+                                                 lookup_value->getValue());
     }
 
     template<typename T>
@@ -355,13 +407,58 @@ namespace surfsara
       return ret;
     }
 
-    inline void Config::setArgument(std::shared_ptr<Cli::Argument> arg,
+    inline void Config::updateParameters()
+    {
+      for(auto arg : parser.getArguments())
+      {
+        if(!arg->isA<surfsara::ast::Node>() && arg->isSet())
+        {
+          std::string name = arg->getName();
+          if(!name.empty() && name != "handle_profile")
+          {
+            std::transform(name.begin(), name.end(),
+                           name.begin(), ::toupper);
+            std::stringstream ost;
+            arg->streamOut(ost);
+            parameters[name] = ost.str();
+          }
+        }
+      }
+    }
+
+    inline void Config::setArgument(const std::string & group,
+                                    const std::string & key,
                                     const surfsara::ast::Node & node)
     {
+
+      std::string name = std::string(group) + std::string("_") + key;
+      const std::shared_ptr<Cli::Argument> arg = parser.getArgument(name);
       using Boolean = surfsara::ast::Boolean;
       using Null = surfsara::ast::Null;
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
+      using Float = surfsara::ast::Float;
+      if(!arg || !arg->isA<surfsara::ast::Node>())
+      {
+        std::transform(name.begin(), name.end(),
+                       name.begin(), ::toupper);
+        if(node.isA<String>())
+        {
+          parameters[name] = node.as<String>();          
+        }
+        else if(node.isA<Boolean>())
+        {
+          parameters[name] = std::to_string(node.as<Boolean>());
+        }
+        else if(node.isA<Integer>())
+        {
+          parameters[name] = std::to_string(node.as<Integer>());
+        }
+        else if(node.isA<Float>())
+        {
+          parameters[name] = std::to_string(node.as<Float>());
+        }
+      }
       if(arg && !arg->isSet() && !node.isA<Null>())
       {
         if(std::dynamic_pointer_cast<Cli::Flag>(arg))
@@ -377,7 +474,7 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
-        else if(std::dynamic_pointer_cast<Cli::Value<std::string>>(arg))
+        else if(arg->isA<std::string>())
         {
           if(node.isA<String>())
           {
@@ -390,7 +487,7 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
-        else if(std::dynamic_pointer_cast<Cli::Value<long>>(arg))
+        else if(arg->isA<long>())
         {
           if(node.isA<Integer>())
           {
@@ -403,8 +500,26 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
+        else if(arg->isA<surfsara::ast::Node>())
+        {
+          std::dynamic_pointer_cast<Cli::Value<surfsara::ast::Node>>(arg)->setValue(node);
+        }
       }
     }
-
   } // handle
 } // surfsara
+
+
+std::istream & operator>>(std::istream & ist, surfsara::ast::Node & n)
+{
+  std::string buff((std::istreambuf_iterator<char>(ist)),
+                   std::istreambuf_iterator<char>());
+  n = surfsara::ast::parseJson(buff);
+  return ist;
+}
+
+std::ostream & operator<<(std::ostream & ost, const surfsara::ast::Node & n)
+{
+  surfsara::ast::formatJson(ost, n, true);
+  return ost;
+}
