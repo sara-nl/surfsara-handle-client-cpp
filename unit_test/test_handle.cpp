@@ -296,6 +296,7 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
       REQUIRE(surfsara::ast::formatJson(arr[3])==
               "{\"index\":4,\"type\":\"IRODS/SERVER_PORT\","
               "\"data\":{\"format\":\"string\",\"value\":\"1247\"}}");
+      // arr4: HS_ADMIN
       REQUIRE(surfsara::ast::formatJson(arr[5])==
               "{\"index\":5,\"type\":\"DUMMY\","
               "\"data\":{\"format\":\"string\",\"value\":\"VALUE\"}}");
@@ -306,8 +307,38 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
     {
       return std::vector<std::string>();
     };
-
   auto res = client.create("/path/to/object.txt", {{"DUMMY", "VALUE"}});
+}
+
+TEST_CASE("overwriting default fields throws", "[IRodsHandleClient]")
+{
+  auto handleClient = std::make_shared<HandleClientMock>();
+  auto reverseLookup = std::make_shared<ReverseLookupClientMock>();
+  IRodsHandleClient client(handleClient,
+                           "prefix",
+                           reverseLookup,
+                           std::make_shared<HandleProfile>(std::map<std::string, std::string>{
+                               {"IRODS_URL_PREFIX", "irods://myserver:1247"},
+                               {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
+                               {"IRODS_SERVER", "myserver"},
+                               {"HANDLE_PREFIX", "HANDLE"},
+                               {"IRODS_SERVER_PORT", "1247"}}),
+                           true,
+                           "IRODS/URL",
+                           "{IRODS_WEBDAV_PREFIX}{OBJECT}");
+
+  handleClient->mockCreate = [](const std::string & prefix, const surfsara::ast::Node & node)
+    {
+      Result res;
+      return res;
+    };
+  reverseLookup->mockLookup = [](const std::vector<std::pair<std::string, std::string>> & query)
+    {
+      return std::vector<std::string>();
+    };
+  REQUIRE_THROWS(client.create("/path/to/object.txt",
+                               {{"URL", "VALUE"},
+                                 {"IRODS/URL", "VALUE_OVWRT"}}));
 }
 
 TEST_CASE("create duplicate irods handle throws", "[IRodsHandleClient]" )

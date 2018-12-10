@@ -332,6 +332,7 @@ namespace surfsara
         auto node = getIndexByType(root, type);
         if(node == Undefined())
         {
+          // add new index
           root.update("values/#", Node(Object{{"index", (_index.isA<Undefined>() ? String("{INDEX}") : _index)},
                                               {"type", String(type)},
                                               {"data", Object{{"format", "string"}, {"value", value}}}}));
@@ -339,6 +340,7 @@ namespace surfsara
         else
         {
           root.update("values/*/data/value", value, true, [&type](const Node & root, const std::vector<std::string> & path) {
+              // search predicate
               std::vector<std::string> tp(path);
               tp.pop_back();
               tp.pop_back();

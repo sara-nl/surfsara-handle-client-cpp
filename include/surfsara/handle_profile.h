@@ -18,6 +18,7 @@ limitations under the License.
 #pragma once
 #include <surfsara/ast.h>
 #include <map>
+#include <set>
 #include "handle_util.h"
 #include "util.h"
 
@@ -43,6 +44,7 @@ namespace surfsara
                                            const std::vector<std::string> & kvp);
       inline std::string expand(const std::string & templ,
                                 const std::map<std::string, std::string> & additional_parameters = {});
+      inline std::set<std::string> getKeys() const;
     private:
       static inline surfsara::ast::Object createStringIndex(const std::string & key,
                                                             const std::string & value);
@@ -262,10 +264,21 @@ inline surfsara::ast::Node surfsara::handle::HandleProfile::create(const std::ma
   {
     throw std::logic_error(std::string("Profile is not an array: ") + ast::formatJson(profile, true));
   }
+  std::set<std::string> keys = getKeys();
   auto root = Node(Object{Pair{"values", result}});
   for(auto & kv : kvp)
   {
-    updateIndex(root, kv.first, String(kv.second));
+    if(keys.find(kv.first) == keys.end())
+    {
+        updateIndex(root, kv.first, String(kv.second));
+    }
+    else
+    {
+      // duplicates are not allowed
+      std::string msg("indices defined in the template cannot be overwritten: ");
+      msg += kv.first;
+      throw std::logic_error(msg);
+    }
   }
   IndexAllocator alloc(getIndices(profile.as<Array>(), false),
                        index_from,
@@ -389,6 +402,23 @@ inline std::string surfsara::handle::HandleProfile::expand(const std::string & t
     surfsara::util::replace(ret, kp.first, kp.second);
   }
   return ret;
+}
+
+inline std::set<std::string> surfsara::handle::HandleProfile::getKeys() const
+{
+  using Array = surfsara::ast::Array;
+  using String = surfsara::ast::String;
+  using Object = surfsara::ast::Object;
+  std::set<std::string> keys;
+  profile.forEach("*/entry/type", [&keys](const Node & root,
+                                     const std::vector<std::string> & path) {
+                    auto n = root.find(path);
+                    if(n.isA<String>())
+                    {
+                      keys.insert(n.as<String>());
+                    }
+                  });
+  return keys;
 }
 
 
