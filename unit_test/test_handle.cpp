@@ -221,7 +221,7 @@ TEST_CASE("create irods handle", "[IRodsHandleClient]" )
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
                                {"IRODS_SERVER", "myserver"},
                                {"HANDLE_PREFIX", "HANDLE"},
-                               {"IRODS_SERVER_PORT", "1247"}}),
+                               {"IRODS_PORT", "1247"}}),
                            true,
                            "IRODS/URL",
                            "{IRODS_WEBDAV_PREFIX}{OBJECT}");
@@ -275,7 +275,7 @@ TEST_CASE("create irods handle without webdav", "[IRodsHandleClient]" )
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_SERVER", "myserver"},
-                               {"IRODS_SERVER_PORT", "1247"}}),
+                               {"IRODS_PORT", "1247"}}),
                            true,
                            "IRODS/URL",
                            "{IRODS_WEBDAV_PREFIX}{OBJECT}");
@@ -322,7 +322,7 @@ TEST_CASE("overwriting default fields throws", "[IRodsHandleClient]")
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
                                {"IRODS_SERVER", "myserver"},
                                {"HANDLE_PREFIX", "HANDLE"},
-                               {"IRODS_SERVER_PORT", "1247"}}),
+                               {"IRODS_PORT", "1247"}}),
                            true,
                            "IRODS/URL",
                            "{IRODS_WEBDAV_PREFIX}{OBJECT}");
@@ -399,7 +399,7 @@ TEST_CASE("update irods handle with webdav", "[IRodsHandleClient]" )
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_WEBDAV_PREFIX", "webdav://myserver:80"},
                                {"IRODS_SERVER", "myserver"},
-                               {"IRODS_SERVER_PORT", "1247"}}),
+                               {"IRODS_PORT", "1247"}}),
                            true,
                            "IRODS/URL",
                            "{IRODS_WEBDAV_PREFIX}{OBJECT}");
@@ -459,7 +459,7 @@ TEST_CASE("update irods handle with webdav removal", "[IRodsHandleClient]" )
                            std::make_shared<HandleProfile>(std::map<std::string, std::string>{
                                {"IRODS_URL_PREFIX", "irods://myserver:1247"},
                                {"IRODS_SERVER", "myserver"},
-                               {"IRODS_SERVER_PORT", "1247"}}),
+                               {"IRODS_PORT", "1247"}}),
                            true,
                            "IRODS/URL",
                            "{IRODS_WEBDAV_PREFIX}{OBJECT}");

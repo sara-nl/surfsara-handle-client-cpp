@@ -114,7 +114,7 @@ inline surfsara::handle::HandleProfile::HandleProfile(const std::map<std::string
               Pair{"format", "string"},
               Pair{"value",  "{IRODS_WEBDAV_PREFIX}{OBJECT}"}}}}}},
     HandleProfile::createStringIndex("IRODS/SERVER", "{IRODS_SERVER}"),
-    HandleProfile::createStringIndex("IRODS/SERVER_PORT", "{IRODS_SERVER_PORT}"),
+    HandleProfile::createStringIndex("IRODS/SERVER_PORT", "{IRODS_PORT}"),
     Object{
       Pair{"entry", Object{
           Pair{"index", 100},
