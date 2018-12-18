@@ -1,12 +1,9 @@
 [submodule "CliArgs"]
 	path = CliArgs
-	url = ../stefan-wolfsheimer.CliArgs.git
+        url = https://github.com/sara-nl/surfsara-cli-args-cpp.git
 [submodule "Catch2"]
 	path = Catch2
-	url = ../catchorg.Catch2.git
-[submodule "handle-mockup"]
-	path = handle-mockup
-	url = ../handle-mockup.git
+        url = https://github.com/catchorg/Catch2.git
 [submodule "json-parser-cpp"]
 	path = json-parser-cpp
-	url = ../stefan-wolfsheimer.json-parser-cpp.git
+	url = https://github.com/sara-nl/surfsara-json-parser-cpp.git
