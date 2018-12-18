@@ -1,14 +1,13 @@
-INCLUDE = -ICatch2/single_include/ -ICliArgs/include -Iinclude -Ijson-parser-cpp/include/ -Iinclude
+INCLUDE = -ICatch2/single_include/ -ICliArgs/include -Iinclude -Isurfsara-json-parser-cpp/include/ -Iinclude
 CXX = g++
 CXXFLAGS = -std=c++11 -O2
 CXXLIBS = -lcurl
 
-all:  test_handle test_curl handle
+all:  test_handle handle
 
 -include handle.dep
 -include test_handle.dep
 -include test_util.dep
--include test_curl.dep
 
 handle: src/handle.cpp ${DEP}
 	${CXX} ${CXXFLAGS} ${INCLUDE} src/handle.cpp ${CXXLIBS} -o handle
@@ -16,10 +15,6 @@ handle: src/handle.cpp ${DEP}
 
 test_handle: test_handle.o test_util.o unit_test/test_main.cpp
 	${CXX} ${CXXFLAGS} ${INCLUDE} test_handle.o test_util.o unit_test/test_main.cpp ${CXXLIBS} -o test_handle
-
-# test_curl: functional_test/test_curl.cpp
-#	${CXX} ${CXXFLAGS} ${INCLUDE} functional_test/test_curl.cpp ${CXXLIBS} -o test_curl
-#	${CXX} ${CXXFLAGS} ${INCLUDE} -MM -MT test_handle.o -MF test_curl.dep functional_test/test_curl.cpp
 
 test_handle.o:
 	${CXX} ${CXXFLAGS} ${INCLUDE} -c unit_test/test_handle.cpp -o test_handle.o
