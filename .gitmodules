@@ -7,3 +7,6 @@
 [submodule "json-parser-cpp"]
 	path = json-parser-cpp
 	url = https://github.com/sara-nl/surfsara-json-parser-cpp.git
+[submodule "surfsara-json-parser-cpp"]
+	path = surfsara-json-parser-cpp
+	url = https://github.com/sara-nl/surfsara-json-parser-cpp.git
