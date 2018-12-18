@@ -1,0 +1,112 @@
+{
+  "lookup":{
+    "url": "http://localhost/hrls/handles",
+    "key": "IRODS/URL",
+    "value": "{IRODS_URL_PREFIX}{OBJECT}",
+    "port": 5000,
+    "user": "21.T12995",
+    "password": null,
+    "insecure": null,
+    "limit": null,
+    "page": null
+  },
+  "irods":{
+    "server": "localhost",
+    "port": 1247,
+    "url_prefix": "irods://localhost",
+    "webdav_prefix": "http://localhost",
+    "webdav_port": 80
+  },
+  "handle":{
+    "url": "http://localhost/api/handles",
+    "port": 5000,
+    "default_prefix": "21.T12995",
+    "prefix": "21.T12995",
+    "admin": "0.NA",
+    "cert": null,
+    "key": null,
+    "insecure": null,
+    "passphrase": null,
+        "index_from": 2,
+    "index_to": 100,
+    "profile": [
+      {
+        "if_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": 1,
+          "type": "URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "if_not_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": 1,
+          "type": "URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_URL_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_URL_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "if_set": "IRODS_WEBDAV_PREFIX",
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/WEBDAV_URL",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/SERVER",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_SERVER}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": "{INDEX}",
+          "type": "IRODS/SERVER_PORT",
+          "data": {
+            "format": "string",
+            "value": "{IRODS_PORT}"
+          }
+        }
+      },
+      {
+        "entry": {
+          "index": 100,
+          "type": "HS_ADMIN",
+          "data": {
+            "format": "admin",
+            "value": {
+              "handle": "{HANDLE_ADMIN}/{HANDLE_PREFIX}",
+              "index": 200,
+              "permissions": "011111110011"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

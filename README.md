@@ -32,6 +32,48 @@ vi config.json
 
 Note that all configuration parameters can be overwritten with command line arguments. Type 
 ```
-./hanlde --help 
+./handle --help 
 ```
 for more details.
+
+## Running tests
+The unit tests can be exectued with the binary
+
+```
+./test_handle
+```
+
+To run the functional test with the integrated handle mockup:
+1. Open a separete shell and and prepare the python virtual env.
+
+```
+cd handle-mockup
+pipenv install -r requirements.txt
+```
+
+2. Execute the mockup server
+
+```
+pipenv run ./handle_mock.py
+```
+
+3. Go back to original shell and prepare the handle client configuration
+
+```
+cp config.json.mock config.json
+```
+
+4. Execute the shell script examples in the root directory
+
+```
+./create.sh
+./get.sh
+./delete.sh
+./icreate.sh mykey myvalue
+./iget.sh
+./iset.sh mykey2 myvalue2
+./iunset.sh mykey
+./iget.sh
+./idelete.sh
+```
+
