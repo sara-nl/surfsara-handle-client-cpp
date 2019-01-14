@@ -239,10 +239,8 @@ namespace surfsara
     {
       auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
       auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
-      std::cout << lookupResult.size() << std::endl;
       if(lookupResult.size() == 1)
       {
-        std::cout << lookupResult[0] << std::endl;
         return lookupResult[0];
       }
       else if(lookupResult.size() == 0)
