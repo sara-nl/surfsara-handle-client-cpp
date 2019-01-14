@@ -63,7 +63,17 @@ namespace surfsara
       inline Result unset(const std::string & path,
                           const std::vector<std::string> & keys);
 
-      inline std::string lookup(const std::string & path);
+      /**
+       * Lookup the handle for the given path.
+       * @return vector of matching handles.
+       */
+      inline std::vector<std::string> lookup(const std::string & path);
+
+      /**
+       * Attempts to find exactly one handle.
+       * Throws execption if not found
+       */
+      inline std::string lookupOne(const std::string & path);
 
     private:
       std::shared_ptr<I_HandleClient> handleClient;
@@ -219,17 +229,25 @@ namespace surfsara
       }
     }
 
-    inline std::string IRodsHandleClient::lookup(const std::string & path)
+    inline std::vector<std::string> IRodsHandleClient::lookup(const std::string & path)
+    {
+      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
+      return reverseLookupClient->lookup({{lookupKey, value}});
+    }
+
+    inline std::string IRodsHandleClient::lookupOne(const std::string & path)
     {
       auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
       auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
-      if(lookupResult.size() == 0)
+      std::cout << lookupResult.size() << std::endl;
+      if(lookupResult.size() == 1)
       {
-        return std::string("");
-      }
-      else if(lookupResult.size() == 1)
-      {
+        std::cout << lookupResult[0] << std::endl;
         return lookupResult[0];
+      }
+      else if(lookupResult.size() == 0)
+      {
+        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
       }
       else
       {
