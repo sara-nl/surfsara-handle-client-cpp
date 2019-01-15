@@ -113,6 +113,7 @@ namespace surfsara
 
       // verbose
       std::shared_ptr<Cli::Flag>               verbose;
+      std::shared_ptr<Cli::Flag>               curl_verbose;
 
       // handle
       std::shared_ptr<Cli::Value<std::string>> handle_url;
@@ -187,9 +188,10 @@ namespace surfsara
       help                = parser.addFlag('h', "help", Cli::Doc("show help"));
       output              = parser.addValue<std::string>('o', "output", Cli::Doc("Write resulting JSON document to file"));
       configfile          = parser.addValue<std::string>('c', "config", Cli::Doc("Read configuration from file"));
-      lookup_before_create = parser.addFlag("lookup_before_create", Cli::Doc("Perform lookup query before creating a new handle"));
 
       verbose             = parser.addFlag("verbose", Cli::Doc("verbose outout"));
+      curl_verbose        = parser.addFlag("curl_verbose", Cli::Doc("verbose libcurl output"));
+
       // handle server options
       handle_url          = parser.addValue<std::string>("handle_url", Cli::Doc("Url to handle server "));
       handle_port         = parser.addValue<long>('p', "handle_port", Cli::Doc("port"));
@@ -214,6 +216,7 @@ namespace surfsara
       lookup_page         = parser.addValue<long>("lookup_page", Cli::Doc("Pagination Page"));
       lookup_key          = parser.addValue<std::string>("lookup_key", Cli::Doc("The key that identifies the object in reverse lookup"));
       lookup_value         = parser.addValue<std::string>("lookup_value", Cli::Doc("The template of the value that identifies the object in reverse lookup"));
+      lookup_before_create = parser.addFlag("lookup_before_create", Cli::Doc("Perform lookup query before creating a new handle"));
 
       // irods setting
       irods_server        = parser.addValue<std::string>("irods_server", Cli::Doc("FQDN or IP of the ICat server"));
@@ -228,7 +231,7 @@ namespace surfsara
       using Node = surfsara::ast::Node;
       using Object = surfsara::ast::Object;
       using String = surfsara::ast::String;
-      if(verbose)
+      if(_verbose)
       {
         std::cout << "read config from file " << filename << std::endl;
       }
@@ -242,27 +245,25 @@ namespace surfsara
       auto node = surfsara::ast::parseJson(str);
       if(node.isA<surfsara::ast::Object>())
       {
-        for(const char * group : {"handle", "lookup", "irods"})
-        {
-          if(node.as<Object>().has(group))
-          {
-            auto subnode = node.as<Object>()[group];
-            if(subnode.isA<Object>())
+        node.as<Object>().forEach([this](const String & group, const Node & subnode) {
+            if(group == "handle" || group == "lookup" || group == "irods")
             {
-              subnode.as<Object>().forEach([this, group](const String & key, const Node & node){
-                  setArgument(group, key, node);
-              });
+              if(subnode.isA<Object>())
+              {
+                subnode.as<Object>().forEach([this, group](const String & key, const Node & n){
+                    setArgument(group, key, n);
+                  });
+              }
             }
-          }
-        }
+            else
+            {
+              setArgument("", group, subnode);
+            }
+          });
       }
       else
       {
         throw std::logic_error(std::string("invalid json object: exepcted object, given ") + node.typeName());
-      }
-      if(verbose)
-      {
-        verbose->setValue(true);
       }
     }
 
@@ -323,7 +324,7 @@ namespace surfsara
       std::string passphrase;
       return std::make_shared<HandleClient>(handle_url->getValue(),
                                             std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
-                                              surfsara::curl::Verbose(verbose->isSet()),
+                                              surfsara::curl::Verbose(curl_verbose->isSet()),
                                               surfsara::curl::Port(handle_port->getValue()),
                                               surfsara::curl::SslPem(handle_cert->getValue(),
                                                                      handle_key->getValue(),
@@ -338,7 +339,7 @@ namespace surfsara
       return std::make_shared<ReverseLookupClient>(lookup_url->getValue(),
                                                    handle_prefix->getValue(),
                                                    std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
-                                                     surfsara::curl::Verbose(verbose->isSet()),
+                                                     surfsara::curl::Verbose(curl_verbose->isSet()),
                                                      surfsara::curl::Port(lookup_port->getValue()),
                                                        surfsara::curl::HttpAuth(lookup_user->getValue(),
                                                                                 lookup_password->getValue(),
@@ -430,8 +431,15 @@ namespace surfsara
                                     const std::string & key,
                                     const surfsara::ast::Node & node)
     {
-
-      std::string name = std::string(group) + std::string("_") + key;
+      std::string name;
+      if(group.empty())
+      {
+        name = key;
+      }
+      else
+      {
+        name = std::string(group) + std::string("_") + key;
+      }
       const std::shared_ptr<Cli::Argument> arg = parser.getArgument(name);
       using Boolean = surfsara::ast::Boolean;
       using Null = surfsara::ast::Null;

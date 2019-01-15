@@ -1,15 +1,7 @@
 {
-  "lookup":{
-    "url": "http://localhost/hrls/handles",
-    "key": "IRODS/URL",
-    "value": "{IRODS_URL_PREFIX}{OBJECT}",
-    "port": 5000,
-    "user": "21.T12995",
-    "password": null,
-    "insecure": null,
-    "limit": null,
-    "page": null
-  },
+  "verbose": false,
+  "curl_verbose": false,
+
   "irods":{
     "server": "localhost",
     "port": 1247,
@@ -17,6 +9,20 @@
     "webdav_prefix": "http://localhost",
     "webdav_port": 80
   },
+
+  "lookup":{
+    "url": "http://localhost/hrls/handles",
+    "key": "IRODS/URL",
+    "value": "{IRODS_URL_PREFIX}{OBJECT}",
+    "port": 5000,
+    "user": "21.T12995",
+    "before_create": true,
+    "password": null,
+    "insecure": null,
+    "limit": null,
+    "page": null
+  },
+
   "handle":{
     "url": "http://localhost/api/handles",
     "port": 5000,
@@ -27,7 +33,7 @@
     "key": null,
     "insecure": null,
     "passphrase": null,
-        "index_from": 2,
+    "index_from": 2,
     "index_to": 100,
     "profile": [
       {
