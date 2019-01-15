@@ -59,9 +59,13 @@ namespace surfsara
        */
       inline Result set(const std::string & path,
                         const std::vector<std::pair<std::string, std::string>> & kvpairs);
-
+      inline Result setHandle(const std::string & handle,
+                              const std::vector<std::pair<std::string, std::string>> & kvpairs);
       inline Result unset(const std::string & path,
                           const std::vector<std::string> & keys);
+
+      inline Result unsetHandle(const std::string & handle,
+                                const std::vector<std::string> & keys);
 
       /**
        * Lookup the handle for the given path.
@@ -174,6 +178,21 @@ namespace surfsara
       }
     }
 
+    inline Result IRodsHandleClient::setHandle(const std::string & handle,
+                                               const std::vector<std::pair<std::string, std::string>> & kvp)
+    {
+      auto obj = handleClient->get(handle);
+      if(obj.success)
+      {
+        profile->setIndices(obj.data, kvp);
+        return handleClient->update(handle, obj.data);
+      }
+      else
+      {
+        throw ValidationError({std::string("Failed to retriev handle / decode ") + handle});
+      }
+    }
+
     inline Result IRodsHandleClient::set(const std::string & path,
                                          const std::vector<std::pair<std::string, std::string>> & kvp)
     {
@@ -188,17 +207,22 @@ namespace surfsara
       }
       else
       {
-        std::string handle(lookupResult[0]);
-        auto obj = handleClient->get(handle);
-        if(obj.success)
-        {
-          profile->setIndices(obj.data, kvp);
-          return handleClient->update(handle, obj.data);
-        }
-        else
-        {
-          throw ValidationError({std::string("Failed to retriev handle / decode ") + lookupResult[0]});
-        }
+        return setHandle(lookupResult[0], kvp);
+      }
+    }
+
+    inline Result IRodsHandleClient::unsetHandle(const std::string & handle,
+                                                 const std::vector<std::string> & keys)
+    {
+      auto obj = handleClient->get(handle); 
+      if(obj.success)
+      {
+        std::vector<int> removeIndices = profile->unsetIndices(obj.data, keys);
+        return handleClient->removeIndices(handle, removeIndices);
+      }
+      else
+      {
+        throw ValidationError({std::string("Failed to retriev handle / decode ") + handle});
       }
     }
 
@@ -215,17 +239,7 @@ namespace surfsara
       }
       else
       {
-        std::string handle(lookupResult[0]);
-        auto obj = handleClient->get(handle);
-        if(obj.success)
-        {
-          std::vector<int> removeIndices = profile->unsetIndices(obj.data, keys);
-          return handleClient->removeIndices(handle, removeIndices);
-        }
-        else
-        {
-          throw ValidationError({std::string("Failed to retriev handle / decode ") + lookupResult[0]});
-        }
+        return unsetHandle(lookupResult[0], keys);
       }
     }
 
