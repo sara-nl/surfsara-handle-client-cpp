@@ -122,7 +122,7 @@ inline surfsara::handle::HandleProfile::HandleProfile(const std::map<std::string
           Pair{"data", Object{
               Pair{"format", "admin"},
               Pair{"value", Object{
-                  Pair{"handle", "0.NA/{HANDLE_PREFIX}"},
+                  Pair{"handle", "{HANDLE_ADMIN}/{HANDLE_HANDLE}"},
                   Pair{"index", 200},
                   Pair{"permissions", "011111110011"}}}}}}}}};
 }

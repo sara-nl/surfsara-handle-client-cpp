@@ -2,7 +2,7 @@
   "handle":{
     "url": "http://localhost/api/handles",
     "port": 5000,
-    "default_prefix": "21.T12995",
+    "admin": "0.NA",
     "prefix": "21.T12995",
     "cert": null,
     "key": null,
@@ -14,7 +14,7 @@
     "key": "IRODS/URL",
     "value": "{IRODS_URL_PREFIX}{OBJECT}",
     "port": 5000,
-    "user": "21.T12995",
+    "prefix": "21.T12995",
     "password": null,
     "insecure": null,
     "limit": null,
