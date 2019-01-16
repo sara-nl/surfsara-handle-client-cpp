@@ -50,22 +50,29 @@ namespace surfsara
 
       inline Result create(const std::string & paths,
                            const std::vector<std::pair<std::string, std::string>> & kvpairs);
+
+      inline Result moveHandle(const std::string & handle, const std::string & newPath);
       inline Result move(const std::string & oldPath, const std::string & newPath);
+
+      inline Result removeHandle(const std::string & handle);
       inline Result remove(const std::string & path);
+
       inline Result get(const std::string & path);
+      inline Result getHandle(const std::string & handle);
 
       /**
        * Update a set of indices of a handle
        */
-      inline Result set(const std::string & path,
-                        const std::vector<std::pair<std::string, std::string>> & kvpairs);
       inline Result setHandle(const std::string & handle,
                               const std::vector<std::pair<std::string, std::string>> & kvpairs);
-      inline Result unset(const std::string & path,
-                          const std::vector<std::string> & keys);
+      inline Result set(const std::string & path,
+                        const std::vector<std::pair<std::string, std::string>> & kvpairs);
 
       inline Result unsetHandle(const std::string & handle,
                                 const std::vector<std::string> & keys);
+      inline Result unset(const std::string & path,
+                          const std::vector<std::string> & keys);
+
 
       /**
        * Lookup the handle for the given path.
@@ -116,51 +123,46 @@ namespace surfsara
                                                                 kvp));
     }
 
-    inline Result IRodsHandleClient::move(const std::string & oldPath, const std::string & newPath)
+    inline Result IRodsHandleClient::moveHandle(const std::string & handle, const std::string & newPath)
     {
-      auto old_value = profile->expand(lookupValue, {{"{OBJECT}", oldPath}});
-      auto lookupResult = reverseLookupClient->lookup({{lookupKey, old_value}});
-      if(lookupResult.empty())
+      auto obj = handleClient->get(handle);
+      if(obj.success)
       {
-        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + old_value});
+        auto removedIndices = profile->update(obj.data, {{"{OBJECT}", newPath}});
+        if(!removedIndices.empty())
+        {
+          auto res = handleClient->removeIndices(handle, removedIndices);
+          if(!res.success)
+          {
+            throw ValidationError({std::string("Failed to remove unused keys")});
+          }
+        }
+        return handleClient->update(handle, obj.data);
       }
       else
       {
-        std::string handle(lookupResult[0]);
-        auto obj = handleClient->get(handle);
-        if(obj.success)
-        {
-          auto removedIndices = profile->update(obj.data, {{"{OBJECT}", newPath}});
-          if(!removedIndices.empty())
-          {
-            auto res = handleClient->removeIndices(handle, removedIndices);
-            if(!res.success)
-            {
-              throw ValidationError({std::string("Failed to remove unused keys")});
-            }
-          }
-          return handleClient->update(handle, obj.data);
-        }
-        else
-        {
-          throw ValidationError({std::string("Failed to retriev handle / decode ") + lookupResult[0]});
-        }
+        throw ValidationError({std::string("Failed to retriev handle / decode ") + handle});
       }
+    }
+
+    inline Result IRodsHandleClient::move(const std::string & oldPath, const std::string & newPath)
+    {
+      return moveHandle(lookupOne(oldPath), newPath);
+    }
+
+    inline Result IRodsHandleClient::removeHandle(const std::string & handle)
+    {
+      return handleClient->remove(handle);
     }
 
     inline Result IRodsHandleClient::remove(const std::string & path)
     {
-      auto value = profile->expand(lookupValue, {{"{OBJECT}", path}});
-      auto lookupResult = reverseLookupClient->lookup({{lookupKey, value}});
-      if(lookupResult.empty())
-      {
-        throw ValidationError({std::string("Could not find PID for ") + lookupKey + "=" + value});
-      }
-      else
-      {
-        std::string handle(lookupResult[0]);
-        return handleClient->remove(handle);
-      }
+      return removeHandle(lookupOne(path));
+    }
+
+    inline Result IRodsHandleClient::getHandle(const std::string & handle)
+    {
+      return handleClient->get(handle);
     }
 
     inline Result IRodsHandleClient::get(const std::string & path)
