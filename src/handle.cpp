@@ -27,6 +27,8 @@ limitations under the License.
 #include <surfsara/handle_util.h>
 #include <surfsara/irods_handle_client.h>
 
+#include <surfsara/json_format.h>
+
 #include <cli.h>
 #include <iostream>
 #include <fstream>
@@ -461,6 +463,36 @@ public:
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Show Default Profile
+//
+////////////////////////////////////////////////////////////////////////////////
+class ShowDefaultProfile : public Operation
+{
+public:
+  ShowDefaultProfile() : Operation("show_default_profile",
+                                   "show_default_profile: show the builtin default profile\n") {}
+
+  virtual int parse(Config & config) override
+  {
+    if(config.args->getValue().size() != 0)
+    {
+      std::cerr << "no argument expcected" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(Config & config) override
+  {
+    surfsara::handle::HandleProfile profile({});
+    surfsara::ast::formatJson(std::cout, profile.getProfile(), true);
+    return 0;
+  }
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 int finalize(const Config & config, const surfsara::handle::Result & res)
 {
@@ -518,7 +550,8 @@ int main(int argc, const char ** argv)
       std::make_shared<HandleDeleteIRodsObject>(),
       std::make_shared<HandleGetIRodsObject>(),
       std::make_shared<HandleSetIRodsMetaData>(),
-      std::make_shared<HandleUnsetIRodsMetaData>()});
+      std::make_shared<HandleUnsetIRodsMetaData>(),
+      std::make_shared<ShowDefaultProfile>()});
   
   auto op = cfg.parseArgs(argc, argv);
   if(!op)

@@ -77,3 +77,14 @@ cp config.json.mock config.json
 ./idelete.sh
 ```
 
+## The default profile
+The handle profile can be configured manullay (in the section handle -> profile of the
+configuration JSON file. It is also possible to use the builtin
+[default profile](doc/default_profile.json).
+
+The default profile can be show with the command
+
+```
+./handle show_default_profile
+```
+

@@ -45,6 +45,7 @@ namespace surfsara
       inline std::string expand(const std::string & templ,
                                 const std::map<std::string, std::string> & additional_parameters = {});
       inline std::set<std::string> getKeys() const;
+      inline surfsara::ast::Node getProfile() const;
     private:
       static inline surfsara::ast::Object createStringIndex(const std::string & key,
                                                             const std::string & value);
@@ -419,6 +420,11 @@ inline std::set<std::string> surfsara::handle::HandleProfile::getKeys() const
                     }
                   });
   return keys;
+}
+
+inline surfsara::ast::Node surfsara::handle::HandleProfile::getProfile() const
+{
+  return profile;
 }
 
 

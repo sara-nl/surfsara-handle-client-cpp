@@ -1,0 +1,79 @@
+[
+  {
+  "if_set": "IRODS_WEBDAV_PREFIX",
+  "entry": {
+    "index": 1,
+    "type": "URL",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+    }
+  }
+},
+  {
+  "if_not_set": "IRODS_WEBDAV_PREFIX",
+  "entry": {
+    "index": 1,
+    "type": "URL",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_URL_PREFIX}{OBJECT}"
+    }
+  }
+},
+  {
+  "entry": {
+    "index": "{INDEX}",
+    "type": "IRODS/URL",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_URL_PREFIX}{OBJECT}"
+    }
+  }
+},
+  {
+  "if_set": "IRODS_WEBDAV_PREFIX",
+  "entry": {
+    "index": "{INDEX}",
+    "type": "IRODS/WEBDAV_URL",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_WEBDAV_PREFIX}{OBJECT}"
+    }
+  }
+},
+  {
+  "entry": {
+    "index": "{INDEX}",
+    "type": "IRODS/SERVER",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_SERVER}"
+    }
+  }
+},
+  {
+  "entry": {
+    "index": "{INDEX}",
+    "type": "IRODS/SERVER_PORT",
+    "data": {
+      "format": "string",
+      "value": "{IRODS_PORT}"
+    }
+  }
+},
+  {
+  "entry": {
+    "index": 100,
+    "type": "HS_ADMIN",
+    "data": {
+      "format": "admin",
+      "value": {
+        "handle": "{HANDLE_ADMIN}/{HANDLE_PREFIX}",
+        "index": 200,
+        "permissions": "011111110011"
+      }
+    }
+  }
+}
+]
