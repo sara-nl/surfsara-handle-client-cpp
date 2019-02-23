@@ -138,16 +138,16 @@ class HandleData(object):
     def match_filter(self, filters, prefix, suffix, values):
         ret = True
         for k, v in filters.items():
-            print k
+            print(k)
             items = [item for item in values
                      if item.get('type', None) == str(k)]
             item = items[0] if len(items) else None
-            print item
+            print(item)
             if item is None:
                 ret = False
             else:
                 value = str(item.get("data", {}).get("value", None))
-                print value
+                print(value)
                 if isinstance(v, str) or isinstance(v, unicode):
                     if v != '*' and value != str(v):
                         ret = False
@@ -157,8 +157,8 @@ class HandleData(object):
         return ret
 
     def glob2regex(self, input_str):
-        print ".*".join([re.escape(tok)
-                                     for tok in input_str.split('*')])
+        print(".*".join([re.escape(tok)
+                         for tok in input_str.split('*')]))
         return re.compile(".*".join([re.escape(tok)
                                      for tok in input_str.split('*')]))
 
@@ -199,7 +199,7 @@ class ReverseLookupMock(Resource):
 
     def get(self, prefix):
         filters = {str(k): str(values[-1])
-                   for k, values in request.args.iterlists()
+                   for k, values in request.args.to_dict().items()
                    if k != 'limit' and k != 'page'}
         return self.handle_data.reverse_lookup(filters, prefix)
 
@@ -215,7 +215,7 @@ def delete_pid_file(pid_file):
         os.remove(pid_file)
 
 
-def start_app(port=5000):
+def start_app(port=5000, host='127.0.0.1'):
     prefix = "21.T12995"
     verbose = True
     app = Flask(__name__)
@@ -232,20 +232,22 @@ def start_app(port=5000):
                      resource_class_args=(),
                      resource_class_kwargs={'handle_data': handle_data,
                                             'prefix': prefix})
-    app.run(debug=True, port=port)
+    app.run(debug=True, port=port, host=host)
 
 
 def run_handle_mock(argv=sys.argv[1:]):
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, help='port', default=5000)
+    parser.add_argument('--host', type=str, help='host', default='127.0.0.1')
     parser.add_argument('--pid_file', help='create pid file')
     args = parser.parse_args(argv)
     port = args.port
+    host = args.host
     pid_file = args.pid_file
     if pid_file is not None:
         create_pid_file(pid_file)
         atexit.register(delete_pid_file, pid_file=pid_file)
-    start_app(port=port)
+    start_app(port=port, host=host)
 
 if __name__ == '__main__':
     run_handle_mock()
