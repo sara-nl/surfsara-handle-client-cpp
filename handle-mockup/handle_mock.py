@@ -198,9 +198,14 @@ class ReverseLookupMock(Resource):
         super(ReverseLookupMock, self).__init__(**kwarg)
 
     def get(self, prefix):
-        filters = {str(k): str(values[-1])
-                   for k, values in request.args.to_dict().items()
-                   if k != 'limit' and k != 'page'}
+        if sys.version_info[0] == 3:
+            filters = {str(k): str(values[-1])
+                       for k, values in request.args.to_dict().items()
+                       if k != 'limit' and k != 'page'}
+        else:
+            filters = {str(k): str(values[-1])
+                       for k, values in request.args.iterlists()
+                       if k != 'limit' and k != 'page'}
         return self.handle_data.reverse_lookup(filters, prefix)
 
 
