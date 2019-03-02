@@ -24,6 +24,7 @@ limitations under the License.
 #include <fstream>
 #include <streambuf>
 #include <memory>
+#include <set>
 #include <cli.h>
 #include <surfsara/json_parser.h>
 #include <surfsara/json_format.h>
@@ -31,6 +32,7 @@ limitations under the License.
 #include <surfsara/reverse_lookup_client.h>
 #include <surfsara/irods_handle_client.h>
 #include <surfsara/handle_profile.h>
+#include <surfsara/handle_permissions.h>
 
 
 namespace surfsara
@@ -97,11 +99,16 @@ namespace surfsara
       Config(const std::vector<std::shared_ptr<Operation>> & op={});
 
       inline void parseJson(const std::string & filename, bool verbose=false);
+      inline surfsara::ast::Node toJson() const;
       inline std::shared_ptr<Operation> parseArgs(int argc, const char ** argv);
       
       inline std::shared_ptr<HandleClient> makeHandleClient() const;
       inline std::shared_ptr<ReverseLookupClient> makeReverseLookupClient() const;
       inline std::shared_ptr<IRodsHandleClient> makeIRodsHandleClient() const;
+      inline std::shared_ptr<Permissions> getReadPermissions() const;
+      inline std::shared_ptr<Permissions> getCreatePermissions() const;
+      inline std::shared_ptr<Permissions> getWritePermissions() const;
+      inline std::shared_ptr<Permissions> getDeletePermissions() const;
 
       // only available in CLI tools
       std::shared_ptr<Cli::PositionalValue<std::string>>         operation;
@@ -114,6 +121,16 @@ namespace surfsara
       // verbose
       std::shared_ptr<Cli::Flag>               verbose;
       std::shared_ptr<Cli::Flag>               curl_verbose;
+
+      // permissions
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_users_read;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_groups_read;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_users_write;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_groups_write;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_users_create;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_groups_create;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_users_delete;
+      std::shared_ptr<Cli::MultipleValue<std::string>> permissions_groups_delete;
 
       // handle
       std::shared_ptr<Cli::Value<std::string>> handle_url;
@@ -153,6 +170,7 @@ namespace surfsara
       std::map<std::string, std::string> parameters;
     private:
       std::vector<std::shared_ptr<Operation>> operations;
+      std::set<std::string> configGroups;
       long index_from;
       long index_to;
 
@@ -161,9 +179,13 @@ namespace surfsara
       inline std::string getOperationsString() const;
       inline std::string getOperationsHelp() const;
 
+      // parse argument from node
       inline void setArgument(const std::string & group,
                               const std::string & key,
                               const surfsara::ast::Node & node);
+      // convert cli argument to node
+      inline surfsara::ast::Node argumentToNode(std::shared_ptr<Cli::Argument> arg) const;
+
       inline void updateParameters();
     };
   }
@@ -178,7 +200,8 @@ namespace surfsara
   {
     inline Config::Config(const std::vector<std::shared_ptr<Operation>> & op)
       : operations(op),
-        parser("CLI tool to perform PID operations")
+        parser("CLI tool to perform PID operations"),
+        configGroups({"handle", "lookup", "irods", "permissions"})
     {
       index_from = 2;
       index_to = 100;
@@ -191,6 +214,25 @@ namespace surfsara
 
       verbose             = parser.addFlag("verbose", Cli::Doc("verbose outout"));
       curl_verbose        = parser.addFlag("curl_verbose", Cli::Doc("verbose libcurl output"));
+
+
+      // permissions
+      permissions_users_read = parser.addMultipleValue<std::string>("permissions_users_read",
+                                                                   Cli::Doc("Users allowed to read handles and perform reverse lookup"));
+      permissions_groups_read = parser.addMultipleValue<std::string>("permissions_groups_read",
+                                                                    Cli::Doc("Users allowed to read handles and perform reverse lookup"));
+      permissions_users_write = parser.addMultipleValue<std::string>("permissions_users_write",
+                                                                    Cli::Doc("Users allowed to modify handles"));
+      permissions_groups_write = parser.addMultipleValue<std::string>("permissions_groups_write",
+                                                                     Cli::Doc("Groups allowed to modify handles"));
+      permissions_users_create = parser.addMultipleValue<std::string>("permissions_users_create",
+                                                                      Cli::Doc("Users allowed to create handles"));
+      permissions_groups_create = parser.addMultipleValue<std::string>("permissions_groups_create",
+                                                                       Cli::Doc("Groups allowed to create handles"));
+      permissions_users_delete = parser.addMultipleValue<std::string>("permissions_users_delete",
+                                                                     Cli::Doc("Users allowed to delete handles"));
+      permissions_groups_delete = parser.addMultipleValue<std::string>("permissions_groups_delete",
+                                                                      Cli::Doc("Groups allowed to delete handles"));
 
       // handle server options
       handle_url          = parser.addValue<std::string>("handle_url", Cli::Doc("Url to handle server "));
@@ -246,7 +288,7 @@ namespace surfsara
       if(node.isA<surfsara::ast::Object>())
       {
         node.as<Object>().forEach([this](const String & group, const Node & subnode) {
-            if(group == "handle" || group == "lookup" || group == "irods")
+            if(configGroups.find(group) != configGroups.end())
             {
               if(subnode.isA<Object>())
               {
@@ -265,6 +307,42 @@ namespace surfsara
       {
         throw std::logic_error(std::string("invalid json object: exepcted object, given ") + node.typeName());
       }
+    }
+
+    inline surfsara::ast::Node Config::toJson() const
+    {
+      using Node = surfsara::ast::Node;
+      using Object = surfsara::ast::Object;
+      using Null = surfsara::ast::Null;
+      Object ret;
+      for(auto group : configGroups)
+      {
+        if(!ret.has(group))
+        {
+          ret.set(group, Object());
+        }
+      }
+      for(auto arg : parser.getArguments())
+      {
+        if(arg->isSet())
+        {
+          std::string argName = arg->getName();
+          std::size_t pos = argName.find('_');
+          if(pos == std::string::npos ||
+             configGroups.find(std::string(argName.begin(), argName.begin() + pos)) == configGroups.end() ||
+             argName[pos] != '_')
+          {
+            ret.set(arg->getName(), argumentToNode(arg));
+          }
+          else
+          {
+            std::string group = std::string(argName.begin(), argName.begin() + pos);
+            std::string rest = std::string(argName.begin() + pos + 1, argName.end());
+            ret[group].as<Object>().set(rest, argumentToNode(arg));
+          }
+        }
+      }
+      return Node(ret);
     }
 
     inline std::shared_ptr<Operation> Config::parseArgs(int argc, const char ** argv)
@@ -374,6 +452,30 @@ namespace surfsara
                                                  lookup_value->getValue());
     }
 
+    inline std::shared_ptr<Permissions> Config::getReadPermissions() const
+    {
+      return std::make_shared<Permissions>(permissions_users_read->getValue(),
+                                           permissions_groups_read->getValue());
+    }
+
+    inline std::shared_ptr<Permissions> Config::getWritePermissions() const
+    {
+      return std::make_shared<Permissions>(permissions_users_write->getValue(),
+                                           permissions_groups_write->getValue());
+    }
+
+    inline std::shared_ptr<Permissions> Config::getCreatePermissions() const
+    {
+      return std::make_shared<Permissions>(permissions_users_create->getValue(),
+                                           permissions_groups_create->getValue());
+    }
+
+    inline std::shared_ptr<Permissions> Config::getDeletePermissions() const
+    {
+      return std::make_shared<Permissions>(permissions_users_delete->getValue(),
+                                           permissions_groups_delete->getValue());
+    }
+
     template<typename T>
     inline void Config::addOperation()
     {
@@ -446,6 +548,8 @@ namespace surfsara
       using String = surfsara::ast::String;
       using Integer = surfsara::ast::Integer;
       using Float = surfsara::ast::Float;
+      using Array = surfsara::ast::Array;
+
       if(!arg || !arg->isA<surfsara::ast::Node>())
       {
         std::transform(name.begin(), name.end(),
@@ -495,6 +599,33 @@ namespace surfsara
                                    surfsara::ast::formatJson(node));
           }
         }
+        else if(arg->isA<std::vector<std::string>>())
+        {
+          if(node.isA<Array>())
+          {
+            std::vector<std::string> values;
+            node.as<Array>().forEach([&values, &node](const Node & elem)
+            {
+              if(elem.isA<String>())
+              {
+                values.push_back(elem.as<String>());
+              }
+              else
+              {
+                throw std::logic_error("execpected String, given " +
+                                       elem.typeName() + ": " +
+                                       surfsara::ast::formatJson(node));
+              }
+            });
+            std::dynamic_pointer_cast<Cli::MultipleValue<std::string>>(arg)->setValue(values);
+          }
+          else
+          {
+            throw std::logic_error("execpected Array, given " +
+                                   node.typeName() + ": " +
+                                   surfsara::ast::formatJson(node));
+          }
+        }
         else if(arg->isA<long>())
         {
           if(node.isA<Integer>())
@@ -513,6 +644,41 @@ namespace surfsara
           std::dynamic_pointer_cast<Cli::Value<surfsara::ast::Node>>(arg)->setValue(node);
         }
       }
+    }
+
+    inline surfsara::ast::Node Config::argumentToNode(std::shared_ptr<Cli::Argument> arg) const
+    {
+      using Node = surfsara::ast::Node;
+      using Boolean = surfsara::ast::Boolean;
+      using Integer = surfsara::ast::Integer;
+      using Array = surfsara::ast::Array;
+      using String = surfsara::ast::String;
+      if(arg->isFlag())
+      {
+        return Node(Boolean(arg->isSet()));
+      }
+      else if(arg->isMultiple() && arg->isA<std::vector<std::string>>())
+      {
+        Array arr;
+        for(auto strarg : arg->valueCast<std::vector<std::string>>())
+        {
+          arr.pushBack(String(strarg));
+        }
+        return Node(arr);
+      }
+      else if(arg->isA<std::string>())
+      {
+        return Node(arg->valueCast<std::string>());
+      }
+      else if(arg->isA<long>())
+      {
+        return Node(Integer(arg->valueCast<long>()));
+      }
+      else if(arg->isA<Node>())
+      {
+        return arg->valueCast<Node>();
+      }
+      return Node();
     }
   } // handle
 } // surfsara

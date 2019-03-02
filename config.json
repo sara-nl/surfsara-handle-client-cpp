@@ -9,7 +9,16 @@
     "webdav_prefix": "http://localhost",
     "webdav_port": 80
   },
-
+  "permissions": {
+    "users_read": ["*"],
+    "groups_read": ["*"],
+    "users_write": [],
+    "groups_write": [],
+    "users_create": [],
+    "groups_create": [],
+    "users_delete": [],
+    "groups_delete": []
+  },
   "lookup":{
     "url": "http://localhost/hrls/handles",
     "key": "IRODS/URL",

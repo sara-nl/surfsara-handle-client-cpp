@@ -465,6 +465,38 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Overlay config
+//
+////////////////////////////////////////////////////////////////////////////////
+/*
+ * Parse configuration file (or use default config) and CLI arguments and generate
+ * configuration.
+ */
+class OverlayConfig : public Operation
+{
+public:
+  OverlayConfig() : Operation("config",
+                              "config: parse configuration file and arguments and generate overlayed configuration\n") {}
+  virtual int parse(Config & config) override
+  {
+    if(config.args->getValue().size() != 0)
+    {
+      std::cerr << "no argument expcected" << std::endl;
+      return 8;
+    }
+    return 0;
+  }
+
+  virtual int exec(Config & config) override
+  {
+    surfsara::ast::formatJson(std::cout, config.toJson(), true);
+    return 0;
+  }
+
+};
+  
+////////////////////////////////////////////////////////////////////////////////
+//
 // Show Default Profile
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,6 +583,7 @@ int main(int argc, const char ** argv)
       std::make_shared<HandleGetIRodsObject>(),
       std::make_shared<HandleSetIRodsMetaData>(),
       std::make_shared<HandleUnsetIRodsMetaData>(),
+      std::make_shared<OverlayConfig>(),
       std::make_shared<ShowDefaultProfile>()});
   
   auto op = cfg.parseArgs(argc, argv);

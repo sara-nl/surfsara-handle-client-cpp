@@ -17,6 +17,16 @@
     "page": null,
      "before_create": true
   },
+  "permissions":{
+    "users_read": ["*"],
+    "groups_read": ["*"],
+    "users_write": ["rods#tempZone"],
+    "groups_write": [],
+    "users_create": ["rods#tempZone"],
+    "groups_create": [],
+    "users_delete": ["rods#tempZone"],
+    "groups_delete": []
+  },
   "handle":{
     "url": "http://localhost/api/handles",
     "port": 5000,
