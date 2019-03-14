@@ -149,8 +149,10 @@ namespace surfsara
       std::shared_ptr<Cli::Value<std::string>> lookup_url;
       std::shared_ptr<Cli::Value<long>>        lookup_port;
       std::shared_ptr<Cli::Value<std::string>> lookup_prefix;
+      std::shared_ptr<Cli::Value<std::string>> lookup_user;
       std::shared_ptr<Cli::Value<std::string>> lookup_password;
       std::shared_ptr<Cli::Flag>               lookup_insecure;
+      std::shared_ptr<Cli::Value<std::string>> lookup_caCert;
       std::shared_ptr<Cli::Value<long>>        lookup_limit;
       std::shared_ptr<Cli::Value<long>>        lookup_page;
       std::shared_ptr<Cli::Flag>               lookup_before_create;
@@ -252,8 +254,10 @@ namespace surfsara
       lookup_url          = parser.addValue<std::string>("lookup_url", Cli::Doc("Url to reverse lookup server "));
       lookup_port         = parser.addValue<long>("lookup_port", Cli::Doc("Port for reverse lookup server"));
       lookup_prefix       = parser.addValue<std::string>("lookup_prefix", Cli::Doc("User for reverse lookup server "));
+      lookup_user         = parser.addValue<std::string>("lookup_user", Cli::Doc("Username for the reverse lookup system"));
       lookup_password     = parser.addValue<std::string>("lookup_password", Cli::Doc("Password for reverse lookup server "));
       lookup_insecure     = parser.addFlag("lookup_insecure", Cli::Doc("Allow insecure server connections with reverse lookup server when using SSL"));
+      lookup_caCert       = parser.addValue<std::string>("lookup_cacert", Cli::Doc("CA certificate to verify peer against"));
       lookup_limit        = parser.addValue<long>("lookup_limit", Cli::Doc("Pagination Limit"));
       lookup_page         = parser.addValue<long>("lookup_page", Cli::Doc("Pagination Page"));
       lookup_key          = parser.addValue<std::string>("lookup_key", Cli::Doc("The key that identifies the object in reverse lookup"));
@@ -419,9 +423,10 @@ namespace surfsara
                                                    std::vector<std::shared_ptr<surfsara::curl::BasicCurlOpt>>{
                                                      surfsara::curl::Verbose(curl_verbose->isSet()),
                                                      surfsara::curl::Port(lookup_port->getValue()),
-                                                       surfsara::curl::HttpAuth(lookup_prefix->getValue(),
-                                                                                lookup_password->getValue(),
-                                                                                lookup_insecure->isSet())},
+                                                     surfsara::curl::HttpAuth(lookup_user->getValue(),
+                                                                              lookup_password->getValue(),
+                                                                              lookup_insecure->isSet(),
+                                                                              lookup_caCert->getValue())},
                                                    (lookup_limit->isSet() ? lookup_limit->getValue() : 100),
                                                    (lookup_page->isSet() ? lookup_page->getValue() : 0),
                                                    verbose->isSet());
