@@ -138,6 +138,7 @@ namespace surfsara
       std::shared_ptr<Cli::Value<std::string>> handle_key;
       std::shared_ptr<Cli::Value<std::string>> handle_cert;
       std::shared_ptr<Cli::Value<std::string>> handle_caCert;
+      std::shared_ptr<Cli::Value<std::string>> handle_caCertPath;
       std::shared_ptr<Cli::Flag>               handle_insecure;
       std::shared_ptr<Cli::Flag>               handle_passphrase;
       std::shared_ptr<Cli::Value<std::string>> handle_prefix;
@@ -153,6 +154,7 @@ namespace surfsara
       std::shared_ptr<Cli::Value<std::string>> lookup_password;
       std::shared_ptr<Cli::Flag>               lookup_insecure;
       std::shared_ptr<Cli::Value<std::string>> lookup_caCert;
+      std::shared_ptr<Cli::Value<std::string>> lookup_caCertPath;
       std::shared_ptr<Cli::Value<long>>        lookup_limit;
       std::shared_ptr<Cli::Value<long>>        lookup_page;
       std::shared_ptr<Cli::Flag>               lookup_before_create;
@@ -242,6 +244,7 @@ namespace surfsara
       handle_key          = parser.addValue<std::string>("handle_key", Cli::Doc("key file (PEM)"));
       handle_cert         = parser.addValue<std::string>("handle_cert", Cli::Doc("certificate file (PEM)"));
       handle_caCert       = parser.addValue<std::string>("handle_cacert", Cli::Doc("CA certificate to verify peer against"));
+      handle_caCertPath   = parser.addValue<std::string>("handle_cacert_path", Cli::Doc("CA certificate directory to verify peer against"));
       handle_passphrase   = parser.addFlag("handle_passphrase", Cli::Doc("key file requires passphrase, ask for it"));
       handle_insecure     = parser.addFlag("handle_insecure", Cli::Doc("Allow insecure server connections when using SSL"));
       handle_prefix       = parser.addValue<std::string>("handle_prefix", Cli::Doc("Prefix"));
@@ -258,6 +261,7 @@ namespace surfsara
       lookup_password     = parser.addValue<std::string>("lookup_password", Cli::Doc("Password for reverse lookup server "));
       lookup_insecure     = parser.addFlag("lookup_insecure", Cli::Doc("Allow insecure server connections with reverse lookup server when using SSL"));
       lookup_caCert       = parser.addValue<std::string>("lookup_cacert", Cli::Doc("CA certificate to verify peer against"));
+      lookup_caCertPath   = parser.addValue<std::string>("lookup_cacert_path", Cli::Doc("CA certificate directory to verify peer against"));
       lookup_limit        = parser.addValue<long>("lookup_limit", Cli::Doc("Pagination Limit"));
       lookup_page         = parser.addValue<long>("lookup_page", Cli::Doc("Pagination Page"));
       lookup_key          = parser.addValue<std::string>("lookup_key", Cli::Doc("The key that identifies the object in reverse lookup"));
@@ -412,7 +416,8 @@ namespace surfsara
                                                                      handle_key->getValue(),
                                                                      handle_insecure->isSet(),
                                                                      passphrase,
-                                                                     handle_caCert->getValue())},
+                                                                     handle_caCert->getValue(),
+                                                                     handle_caCertPath->getValue())},
                                             verbose->isSet());
     }
 
@@ -426,7 +431,8 @@ namespace surfsara
                                                      surfsara::curl::HttpAuth(lookup_user->getValue(),
                                                                               lookup_password->getValue(),
                                                                               lookup_insecure->isSet(),
-                                                                              lookup_caCert->getValue())},
+                                                                              lookup_caCert->getValue(),
+                                                                              lookup_caCertPath->getValue())},
                                                    (lookup_limit->isSet() ? lookup_limit->getValue() : 100),
                                                    (lookup_page->isSet() ? lookup_page->getValue() : 0),
                                                    verbose->isSet());

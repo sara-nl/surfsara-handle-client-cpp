@@ -41,11 +41,13 @@ namespace surfsara
                                                 const std::string & _keyFile,
                                                 bool                _insecure = true,
                                                 const std::string & _passphrase = "",
-                                                const std::string & _caCert = "");
+                                                const std::string & _caCert = "",
+                                                const std::string & _caCertPath = "");
     std::shared_ptr<BasicCurlOpt> HttpAuth(const std::string & _user,
                                            const std::string & _password,
                                            bool                _insecure = true,
-                                           const std::string & _caCert = "");
+                                           const std::string & _caCert = "",
+                                           const std::string & _caCertPath = "");
     static std::shared_ptr<BasicCurlOpt> Delete();
     static std::shared_ptr<BasicCurlOpt> Data(const std::string & data);
     static std::shared_ptr<BasicCurlOpt> Header(const std::initializer_list<std::string> & _headers);
@@ -209,12 +211,14 @@ namespace surfsara
                const std::string & _keyFile,
                bool                _insecure,
                const std::string & _passphrase,
-               const std::string & _caCert)
+               const std::string & _caCert,
+               const std::string & _caCertPath)
           : certFile(_certFile),
             keyFile(_keyFile),
             insecure(_insecure),
             passphrase(_passphrase),
-            caCertFile(_caCert)
+            caCertFile(_caCert),
+            caCertPath(_caCertPath)
         {
         }
 
@@ -253,6 +257,11 @@ namespace surfsara
             c = curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
             if(c != CURLE_OK) ret = c;
           }
+          if(!caCertPath.empty())
+          {
+            c = curl_easy_setopt(curl, CURLOPT_CAPATH, caCertPath.c_str());
+            if(c != CURLE_OK) ret = c;
+          }
           return ret;
         }
       private:
@@ -260,6 +269,7 @@ namespace surfsara
         std::string keyFile;
         std::string passphrase;
         std::string caCertFile;
+        std::string caCertPath;
         bool insecure;
       };
       
@@ -270,12 +280,16 @@ namespace surfsara
         HttpAuth(const std::string & _user,
                  const std::string & _password,
                  bool                _insecure,
-                 const std::string & _caCertFile) : user(_user),
+                 const std::string & _caCertFile,
+                 const std::string & _caCertPath) : user(_user),
                                                     password(_password),
                                                     caCertFile(_caCertFile),
+                                                    caCertPath(_caCertPath),
                                                     insecure(_insecure) {}
         virtual CURLcode set(CURL *curl) const override
         {
+          CURLcode c;
+          CURLcode ret = CURLE_OK;
           if(insecure)
           {
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -286,7 +300,13 @@ namespace surfsara
           }
           if(!caCertFile.empty())
           {
-            curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+            c = curl_easy_setopt(curl, CURLOPT_CAINFO, caCertFile.c_str());
+            if(c != CURLE_OK) ret = c;
+          }
+          if(!caCertPath.empty())
+          {
+            c = curl_easy_setopt(curl, CURLOPT_CAPATH, caCertPath.c_str());
+            if(c != CURLE_OK) ret = c;
           }
           std::string tmp = user;
           if(!password.empty())
@@ -294,12 +314,15 @@ namespace surfsara
             tmp.push_back(':');
             tmp += password;
           }
-          return curl_easy_setopt(curl, CURLOPT_USERPWD, tmp.c_str());
+          c = curl_easy_setopt(curl, CURLOPT_USERPWD, tmp.c_str());
+          if(c != CURLE_OK) ret = c;
+          return ret;
         }
       private:
         std::string user;
         std::string password;
         std::string caCertFile;
+        std::string caCertPath;
         bool insecure;
 
       };
@@ -314,21 +337,24 @@ namespace surfsara
                                          const std::string & _certFile,
                                          bool                _insecure,
                                          const std::string & _passphrase,
-                                         const std::string & _caCert)
+                                         const std::string & _caCert,
+                                         const std::string & _caCertPath)
     {
       return std::make_shared<details::SslPem>(_CACertFile,
                                                _certFile,
                                                _insecure,
                                                _passphrase,
-                                               _caCert);
+                                               _caCert,
+                                               _caCertPath);
     }
 
     std::shared_ptr<BasicCurlOpt> HttpAuth(const std::string & _user,
                                            const std::string & _password,
                                            bool                _insecure,
-                                           const std::string & _caCert)
+                                           const std::string & _caCert,
+                                           const std::string & _caCertPath)
     {
-      return std::make_shared<details::HttpAuth>(_user, _password, _insecure, _caCert);
+      return std::make_shared<details::HttpAuth>(_user, _password, _insecure, _caCert, _caCertPath);
     }
 
     std::shared_ptr<BasicCurlOpt> Port(long port) {
