@@ -32,7 +32,8 @@ TEST_CASE("no_handle_permission", "[Permission]" )
 
 TEST_CASE("all_users_handle_permission", "[Permission]" )
 {
-  Permissions perm(std::vector<std::string>{"*", "testuser"}, std::vector<std::string>{"notmygroup"});
+  Permissions perm(std::vector<std::string>{"*", "testuser"},
+                   std::vector<std::string>{"notmygroup"});
   REQUIRE(perm.checkAny());
   REQUIRE(perm.checkSome());
   REQUIRE(perm.checkUser("user"));
@@ -42,20 +43,23 @@ TEST_CASE("all_users_handle_permission", "[Permission]" )
 TEST_CASE("all_groups_handle_permission", "[Permission]" )
 {
 
-  Permissions perm(std::vector<std::string>{"testuser"}, std::vector<std::string>{"notmygroup", "*"});
+  Permissions perm(std::vector<std::string>{"testuser"},
+                   std::vector<std::string>{"notmygroup", "*"});
   REQUIRE(perm.checkAny());
   REQUIRE(perm.checkSome());
   REQUIRE_FALSE(perm.checkUser("user"));
-  REQUIRE_FALSE(perm.checkGroup("group"));
+  REQUIRE(perm.checkGroup("group"));
 }
 
 TEST_CASE("no_matching_user_or_group_handle_permission", "[Permission]" )
 {
-  Permissions perm(std::vector<std::string>{"user1", "user2"}, std::vector<std::string>{"group1", "group2"});
+  Permissions perm(std::vector<std::string>{"user1", "user2"},
+                   std::vector<std::string>{"group1", "group2"});
   REQUIRE_FALSE(perm.checkAny());
   REQUIRE(perm.checkSome());
   REQUIRE_FALSE(perm.checkUser("user"));
   REQUIRE_FALSE(perm.checkGroup("group"));
   REQUIRE(perm.checkUser("user1"));
   REQUIRE(perm.checkGroup("group2"));
+  REQUIRE_FALSE(perm.checkGroup("group3"));
 }
