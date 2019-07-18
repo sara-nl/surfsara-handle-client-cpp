@@ -1,4 +1,4 @@
-INCLUDE = -ICatch2/single_include/ -ICliArgs/include -Iinclude -Isurfsara-json-parser-cpp/include/ -Iinclude
+INCLUDE = -ICatch2/single_include/ -ICliArgs/include -Iinclude -Ijson-parser-cpp/include/ -Iinclude
 CXX = g++
 CXXFLAGS = -std=c++11 -O2
 CXXLIBS = -lcurl
