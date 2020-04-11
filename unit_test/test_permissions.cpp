@@ -24,10 +24,12 @@ using Permissions = surfsara::handle::Permissions;
 TEST_CASE("no_handle_permission", "[Permission]" )
 {
 
-  Permissions perm(std::vector<std::string>{}, std::vector<std::string>{});
+  Permissions perm(std::vector<std::string>{},
+                   std::vector<std::string>{});
   REQUIRE_FALSE(perm.checkAny());
   REQUIRE_FALSE(perm.checkSome());
   REQUIRE_FALSE(perm.checkUser("user"));
+  REQUIRE_FALSE(perm.checkOwner());
 }
 
 TEST_CASE("all_users_handle_permission", "[Permission]" )
@@ -38,6 +40,7 @@ TEST_CASE("all_users_handle_permission", "[Permission]" )
   REQUIRE(perm.checkSome());
   REQUIRE(perm.checkUser("user"));
   REQUIRE_FALSE(perm.checkGroup("group"));
+  REQUIRE_FALSE(perm.checkOwner());
 }
 
 TEST_CASE("all_groups_handle_permission", "[Permission]" )
@@ -49,6 +52,7 @@ TEST_CASE("all_groups_handle_permission", "[Permission]" )
   REQUIRE(perm.checkSome());
   REQUIRE_FALSE(perm.checkUser("user"));
   REQUIRE(perm.checkGroup("group"));
+  REQUIRE_FALSE(perm.checkOwner());
 }
 
 TEST_CASE("no_matching_user_or_group_handle_permission", "[Permission]" )
@@ -62,4 +66,26 @@ TEST_CASE("no_matching_user_or_group_handle_permission", "[Permission]" )
   REQUIRE(perm.checkUser("user1"));
   REQUIRE(perm.checkGroup("group2"));
   REQUIRE_FALSE(perm.checkGroup("group3"));
+  REQUIRE_FALSE(perm.checkOwner());
+}
+
+TEST_CASE("owner_permission", "[Permission]" )
+{
+
+  {
+    Permissions perm(std::vector<std::string>{"*owner*"},
+                     std::vector<std::string>{});
+    REQUIRE_FALSE(perm.checkAny());
+    REQUIRE(perm.checkSome());
+    REQUIRE_FALSE(perm.checkUser("user"));
+    REQUIRE(perm.checkOwner());
+  }
+  {
+    Permissions perm(std::vector<std::string>{},
+                     std::vector<std::string>{"*owner*"});
+    REQUIRE_FALSE(perm.checkAny());
+    REQUIRE(perm.checkSome());
+    REQUIRE_FALSE(perm.checkUser("user"));
+    REQUIRE(perm.checkOwner());
+  }
 }

@@ -25,7 +25,12 @@ namespace surfsara
       inline bool checkSome() const;
 
       /**
-       * Return true if permission is granted for group
+       * Return true if permission is granted for user
+       */
+      inline bool checkOwner() const;
+
+      /**
+       * Return true if permission is granted for user
        */
       inline bool checkUser(const std::string & user) const;
 
@@ -33,9 +38,11 @@ namespace surfsara
        * Return true if permission is granted for group.
        */
       inline bool checkGroup(const std::string & group) const;
+
     private:
       bool all_users;
       bool all_groups;
+      bool owners;
       std::set<std::string> users;
       std::set<std::string> groups;
     };
@@ -47,12 +54,16 @@ inline surfsara::handle::Permissions::Permissions(const std::vector<std::string>
 {
   all_users = false;
   all_groups = false;
-
+  owners = false;
   for(const auto & u : _users)
   {
     if(u == "*")
     {
       all_users = true;
+    }
+    else if(u == "*owner*")
+    {
+      owners = true;
     }
     users.insert(u);
   }
@@ -61,6 +72,10 @@ inline surfsara::handle::Permissions::Permissions(const std::vector<std::string>
     if(g == "*")
     {
       all_groups = true;
+    }
+    else if(g == "*owner*")
+    {
+      owners = true;
     }
     groups.insert(g);
   }
@@ -73,7 +88,12 @@ inline bool surfsara::handle::Permissions::checkAny() const
 
 inline bool surfsara::handle::Permissions::checkSome() const
 {
-  return !users.empty() || !groups.empty();
+  return !users.empty() || !groups.empty() || owners;
+}
+
+inline bool surfsara::handle::Permissions::checkOwner() const
+{
+  return owners;
 }
 
 inline bool surfsara::handle::Permissions::checkUser(const std::string & user) const
