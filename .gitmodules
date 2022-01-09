@@ -4,6 +4,7 @@
 [submodule "Catch2"]
 	path = Catch2
         url = https://github.com/catchorg/Catch2.git
+        branch = v2.13.8
 [submodule "json-parser-cpp"]
 	path = json-parser-cpp
 	url = https://github.com/sara-nl/surfsara-json-parser-cpp.git
